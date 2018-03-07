@@ -843,4 +843,64 @@ public class AmqpBridgeTest extends KafkaClusterTestBase {
 			}
 		});
 	}
+
+	//Experiment test for null key AMPQ annotation
+	@Test
+	public void receiveSimpleMessageWithNullKey(TestContext context) {
+		String topic = "receiveSimpleMessage";
+		kafkaCluster.createTopic(topic, 1, 1);
+
+		String sentBody = "Simple message";
+
+		Async send = context.async();
+		kafkaCluster.useTo().produceStrings(1, send::complete, () ->
+				new ProducerRecord<>(topic, 0, null, sentBody));
+		send.await();
+
+		ProtonClient client = ProtonClient.create(this.vertx);
+		Async async = context.async();
+		client.connect(AmqpBridgeTest.BRIDGE_HOST, AmqpBridgeTest.BRIDGE_PORT, ar -> {
+			if (ar.succeeded()) {
+
+				ProtonConnection connection = ar.result();
+				connection.open();
+
+				ProtonReceiver receiver = connection.createReceiver(topic + "/group.id/my_group");
+				receiver.handler((delivery, message) -> {
+
+					Section body = message.getBody();
+					if (body instanceof Data) {
+						byte[] value = ((Data)body).getValue().getArray();
+
+						// default is AT_LEAST_ONCE QoS (unsettled) so we need to send disposition (settle) to sender
+						delivery.disposition(Accepted.getInstance(), true);
+
+						// get topic, partition, offset and key from AMQP annotations
+						MessageAnnotations annotations = message.getMessageAnnotations();
+						context.assertNotNull(annotations);
+						String topicAnnotation = String.valueOf(annotations.getValue().get(Symbol.valueOf(AmqpBridge.AMQP_TOPIC_ANNOTATION)));
+						context.assertNotNull(topicAnnotation);
+						Integer partitionAnnotation = (Integer) annotations.getValue().get(Symbol.valueOf(AmqpBridge.AMQP_PARTITION_ANNOTATION));
+						context.assertNotNull(partitionAnnotation);
+						Long offsetAnnotation = (Long) annotations.getValue().get(Symbol.valueOf(AmqpBridge.AMQP_OFFSET_ANNOTATION));
+						context.assertNotNull(offsetAnnotation);
+						Object keyAnnotation = annotations.getValue().get(Symbol.valueOf(null));
+						context.assertNull(keyAnnotation);
+						log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
+								topicAnnotation, partitionAnnotation, offsetAnnotation, keyAnnotation, new String(value));
+
+						context.assertEquals(topicAnnotation, topic);
+						context.assertEquals(partitionAnnotation, 0);
+						context.assertEquals(offsetAnnotation, 0L);
+						context.assertEquals(sentBody, new String(value));
+						async.complete();
+					}
+				})
+						.setPrefetch(this.bridgeConfigProperties.getEndpointConfigProperties().getFlowCredit())
+						.open();
+			} else {
+				context.fail(ar.cause());
+			}
+		});
+	}
 }
