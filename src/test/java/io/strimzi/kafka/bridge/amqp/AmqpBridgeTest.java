@@ -18,6 +18,8 @@ package io.strimzi.kafka.bridge.amqp;
 
 import io.strimzi.kafka.bridge.KafkaClusterTestBase;
 import io.strimzi.kafka.bridge.amqp.converter.AmqpDefaultMessageConverter;
+import io.strimzi.kafka.bridge.amqp.converter.AmqpJsonMessageConverter;
+import io.strimzi.kafka.bridge.amqp.converter.AmqpRawMessageConverter;
 import io.strimzi.kafka.bridge.converter.DefaultDeserializer;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
@@ -848,11 +850,23 @@ public class AmqpBridgeTest extends KafkaClusterTestBase {
 
 	//Experiment test for null key AMPQ annotation
 	@Test
-	public void receiveSimpleMessageWithNullKey(TestContext context) {
-		byte[] value = {Byte.MIN_VALUE,Byte.MAX_VALUE};
-		ConsumerRecord<String,byte[]> record = new ConsumerRecord<String, byte[]>("mytopic",0,0,null,value);
-        AmqpDefaultMessageConverter messageConverter = new AmqpDefaultMessageConverter();
-        Message message = messageConverter.toMessage("0",record);
-        context.assertNull(message.getMessageAnnotations().getValue().get(Symbol.valueOf(AmqpBridge.AMQP_KEY_ANNOTATION)));
+	public void ConvertedMessageWithNullKey(TestContext context) {
+		String payload = "{ \"jsonKey\":\"jsonValue\"}";
+		ConsumerRecord<String,byte[]> record = new ConsumerRecord<String, byte[]>("mytopic",0,0,null, payload.getBytes());
+
+		AmqpDefaultMessageConverter defaultMessageConverter = new AmqpDefaultMessageConverter();
+		Message defaultMessage = defaultMessageConverter.toMessage("0",record);
+		context.assertNull(defaultMessage.getMessageAnnotations().getValue().get(Symbol.valueOf(AmqpBridge.AMQP_KEY_ANNOTATION)));
+
+		String rawpayload = "Test Message";
+		ConsumerRecord<String,byte[]> rawrecord = new ConsumerRecord<String, byte[]>("mytopic",0,0,null, rawpayload.getBytes());
+
+		AmqpRawMessageConverter rawMessageConverter = new AmqpRawMessageConverter();
+		Message rawMessage = rawMessageConverter.toMessage("0",rawrecord);
+		context.assertNotNull(rawMessage.getMessageAnnotations().getValue().get(Symbol.valueOf(AmqpBridge.AMQP_KEY_ANNOTATION)));
+
+		AmqpJsonMessageConverter jsonMessageConverter = new AmqpJsonMessageConverter();
+		Message jsonMessage = jsonMessageConverter.toMessage("0",record);
+		context.assertNull(jsonMessage.getMessageAnnotations().getValue().get(Symbol.valueOf(AmqpBridge.AMQP_KEY_ANNOTATION)));
 	}
 }
