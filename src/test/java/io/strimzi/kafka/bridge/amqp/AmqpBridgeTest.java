@@ -759,7 +759,8 @@ public class AmqpBridgeTest extends KafkaClusterTestBase {
 				ProtonConnection connection = ar.result();
 				connection.open();
 
-				ProtonReceiver receiver = connection.createReceiver(topic + "/group.id/my_group");
+				//only topic is needed in address : [topic]
+				ProtonReceiver receiver = connection.createReceiver(topic);
 
 				Source source = (Source)receiver.getSource();
 

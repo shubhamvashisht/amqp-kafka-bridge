@@ -83,10 +83,9 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 			this.sender.close();
 		}
 	}
-	
+
 	@Override
 	public void handle(Endpoint<?> endpoint) {
-
 		ProtonLink<?> link = (ProtonLink<?>) endpoint.get();
 		AmqpConfigProperties amqpConfigProperties =
 				(AmqpConfigProperties) this.bridgeConfigProperties.getEndpointConfigProperties();
@@ -96,73 +95,53 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 			throw new IllegalArgumentException("This Proton link must be a sender");
 		}
 		try {
-			
+
 			if (this.converter == null) {
 				this.converter = (MessageConverter<K, V, Message>) AmqpBridge.instantiateConverter(amqpConfigProperties.getMessageConverter());
 			}
-			
+
 			this.sender = (ProtonSender)link;
-			
-			// address is like this : [topic]/group.id/[group.id]
+
+			// address is like this : [topic]/group.id/[group.id] or [topic] if partition and offset are specified
 			String address = this.sender.getRemoteSource().getAddress();
-			
-			int groupIdIndex = address.indexOf(AmqpSinkBridgeEndpoint.GROUP_ID_MATCH);
-			
-			if (groupIdIndex == -1 
-					|| groupIdIndex == 0
-					|| groupIdIndex == address.length()-AmqpSinkBridgeEndpoint.GROUP_ID_MATCH.length()) {
-			
-				// group.id don't specified in the address, link will be closed
-				log.warn("Local detached");
-	
-				String detail;
-				if (groupIdIndex == -1) {
-					detail = "Mandatory group.id not specified in the address";
-				} else if (groupIdIndex == 0) {
-					detail = "Empty topic in specified address";
-				} else {
-					detail = "Empty consumer group in specified address";
-				}
-				throw new AmqpErrorConditionException(AmqpBridge.AMQP_ERROR_NO_GROUPID, detail);
-			} else {
-			
-				// group.id specified in the address, open sender and setup Kafka consumer
+
+
+			Source source = (Source) this.sender.getRemoteSource();
+			Map<Symbol, Object> filters = source.getFilter();
+
+			//checks in the filters if partition and offset are specified, In case this is true group_id is not needed to receive messages
+			if (filters!=null && filters.get(Symbol.getSymbol(AmqpBridge.AMQP_PARTITION_FILTER))!=null
+					&&
+					filters.get(Symbol.getSymbol(AmqpBridge.AMQP_OFFSET_FILTER))!=null){
+
+				//retrieve partition and offset
+				Object partition = filters.get(Symbol.getSymbol(AmqpBridge.AMQP_PARTITION_FILTER));
+				Object offset = filters.get(Symbol.getSymbol(AmqpBridge.AMQP_OFFSET_FILTER));
+				this.checkFilters(partition, offset);
+				log.debug("partition {} offset {}", partition, offset);
+				this.partition = (Integer)partition;
+				this.offset = (Long)offset;
+
 				this.sender
-						.closeHandler(ar -> {
-							if (ar.succeeded()) {
+						.closeHandler(ar ->{
+							if (ar.succeeded()){
 								this.processCloseSender(ar.result());
 							}
 						})
-						.detachHandler(ar -> {
+						.detachHandler(ar ->{
 							this.processCloseSender(this.sender);
 						});
-				
-				this.groupId = address.substring(groupIdIndex + AmqpSinkBridgeEndpoint.GROUP_ID_MATCH.length());
-				this.topic = address.substring(0, groupIdIndex);
+				this.topic = address;
 
-				log.debug("topic {} group.id {}", this.topic, this.groupId);
-				
-				// get filters on partition and offset
-				Source source = (Source) this.sender.getRemoteSource();
-				Map<Symbol, Object> filters = source.getFilter();
-				
-				if (filters != null) {
-					Object partition = filters.get(Symbol.getSymbol(AmqpBridge.AMQP_PARTITION_FILTER));
-					Object offset = filters.get(Symbol.getSymbol(AmqpBridge.AMQP_OFFSET_FILTER));
-					this.checkFilters(partition, offset);
+				log.debug("topic {}", this.topic);
 
-					log.debug("partition {} offset {}", partition, offset);
-					this.partition = (Integer)partition;
-					this.offset = (Long)offset;
-				}
-	
 				// creating configuration for Kafka consumer
-				
+
 				// replace unsupported "/" (in a topic name in Kafka) with "."
 				this.kafkaTopic = this.topic.replace('/', '.');
 				this.offsetTracker = new SimpleOffsetTracker(this.kafkaTopic);
 				this.qos = this.mapQoS(this.sender.getQoS());
-				
+
 				this.initConsumer();
 				// Set up flow control
 				// (*before* subscribe in case we start with no credit!)
@@ -175,10 +154,76 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 				this.setSeekHandler(this::seekHandler);
 				this.setReceivedHandler(this::sendAmqpMessage);
 				this.setCommitHandler(this::commitHandler);
-				
+
 				this.flowCheck();
 				// Subscribe to the topic
 				this.subscribe();
+			}
+			//partition and offset are not specified in the filters so group_id is needed
+			else{
+
+				int groupIdIndex = address.indexOf(AmqpSinkBridgeEndpoint.GROUP_ID_MATCH);
+
+				if (groupIdIndex == -1
+						|| groupIdIndex == 0
+						|| groupIdIndex == address.length()-AmqpSinkBridgeEndpoint.GROUP_ID_MATCH.length()) {
+
+					// group.id don't specified in the address, link will be closed
+					log.warn("Local detached");
+
+					String detail;
+					if (groupIdIndex == -1) {
+						detail = "Mandatory group.id not specified in the address";
+					} else if (groupIdIndex == 0) {
+						detail = "Empty topic in specified address";
+					} else {
+						detail = "Empty consumer group in specified address";
+					}
+					throw new AmqpErrorConditionException(AmqpBridge.AMQP_ERROR_NO_GROUPID, detail);
+				}
+				else {
+
+					// group.id specified in the address, open sender and setup Kafka consumer
+					this.sender
+							.closeHandler(ar -> {
+								if (ar.succeeded()) {
+									this.processCloseSender(ar.result());
+								}
+							})
+							.detachHandler(ar -> {
+								this.processCloseSender(this.sender);
+							});
+
+					this.groupId = address.substring(groupIdIndex + AmqpSinkBridgeEndpoint.GROUP_ID_MATCH.length());
+					this.topic = address.substring(0, groupIdIndex);
+
+					log.debug("topic {} group.id {}", this.topic, this.groupId);
+
+					// creating configuration for Kafka consumer
+
+					// replace unsupported "/" (in a topic name in Kafka) with "."
+					this.kafkaTopic = this.topic.replace('/', '.');
+					this.offsetTracker = new SimpleOffsetTracker(this.kafkaTopic);
+					this.qos = this.mapQoS(this.sender.getQoS());
+
+					this.initConsumer();
+					// Set up flow control
+					// (*before* subscribe in case we start with no credit!)
+
+					this.setPartitionsRevokedHandler(this::partitionsRevokedHandler);
+					this.setPartitionsAssignedHandler(this::partitionsAssignedHandler);
+					this.setSubscribeHandler(this::subscribeHandler);
+					this.setPartitionHandler(this::partitionHandler);
+					this.setAssignHandler(this::assignHandler);
+					this.setSeekHandler(this::seekHandler);
+					this.setReceivedHandler(this::sendAmqpMessage);
+					this.setCommitHandler(this::commitHandler);
+
+					this.flowCheck();
+					// Subscribe to the topic
+					this.subscribe();
+				}
+
 			}
 		} catch (AmqpErrorConditionException e) {
 			AmqpBridge.detachWithError(link, e.toCondition());
@@ -186,7 +231,6 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 			return;
 		}
 	}
-
 	/**
 	 * Send an AMQP error to the client
 	 *
