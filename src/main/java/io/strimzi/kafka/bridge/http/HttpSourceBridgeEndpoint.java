@@ -35,6 +35,7 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
         KafkaProducerRecord<String,byte[]> record = httpMessageConverter.toKafkaRecord(httpMessage.getTopic(),httpMessage);
 
         System.out.println(record.topic()+" : "+record.key()+" : "+record.partition());
+        this.open();
 
         this.send(record,null);
 

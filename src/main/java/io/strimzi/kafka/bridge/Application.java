@@ -47,14 +47,14 @@ public class Application {
     @PostConstruct
     public void start() {
 
-        this.vertx.deployVerticle(this.bridge, done -> {
+/*        this.vertx.deployVerticle(this.bridge, done -> {
 
             if (done.succeeded()) {
                 log.debug("Verticle instance deployed [{}]", done.result());
             } else {
                 log.debug("Failed to deploy verticle instance", done.cause());
             }
-        });
+        });*/
 
         //http variant
         this.vertx.deployVerticle(this.httpBridge, done -> {

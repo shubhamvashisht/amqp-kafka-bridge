@@ -8,13 +8,21 @@ import io.vertx.core.Future;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class HttpBridge extends AbstractVerticle {
-
+    private static final Logger log = LoggerFactory.getLogger(HttpBridge.class);
     private HttpServer httpServer;
     private HttpBridgeConfigProperties httpConfigProperties;
+
+    @Autowired
+    public void setBridgeConfigProperties(HttpBridgeConfigProperties bridgeConfigProperties) {
+        this.httpConfigProperties = bridgeConfigProperties;
+    }
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
@@ -23,11 +31,16 @@ public class HttpBridge extends AbstractVerticle {
 
         httpConfigProperties = new HttpBridgeConfigProperties();
 
+
         httpServer.requestHandler((request)->{
             serveRequests(request);
         }).listen((res)->{
             if (res.succeeded()){
-                System.out.println("running at port : {}"+httpServer.actualPort());
+                log.info("running at port {}",httpServer.actualPort());
+                log.info("Kafka bootstrap servers {}", this.httpConfigProperties.getKafkaConfigProperties().getBootstrapServers());
+                log.info(this.httpConfigProperties.getKafkaConfigProperties().getProducerConfig().getValueSerializer());
+                log.info(this.httpConfigProperties.getKafkaConfigProperties().getProducerConfig().getKeySerializer());
+
                 startFuture.complete();
             }
             else {
@@ -40,8 +53,7 @@ public class HttpBridge extends AbstractVerticle {
 
     private HttpServerOptions configureServer(){
         HttpServerOptions serverOptions = new HttpServerOptions();
-        //System.out.println("lolll"+this.httpConfigProperties.getEndpointConfigProperties().getHttpPort());
-        serverOptions.setPort(3000);
+        serverOptions.setPort(this.httpConfigProperties.getEndpointConfigProperties().getPort());
         return serverOptions;
     }
 

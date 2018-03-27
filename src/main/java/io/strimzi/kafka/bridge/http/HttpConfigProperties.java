@@ -1,32 +1,47 @@
 package io.strimzi.kafka.bridge.http;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "http")
 public class HttpConfigProperties {
 
-    //port to which server will listen
-    private static final int HTTP_DEFAULT_PORT = 8080;
+    private static final String DEFAULT_HOST = "0.0.0.0";
+    private static final int DEFAULT_PORT = 8080;
 
-    //client host
-    private static final String HTTP_DEFAULT_HOST = "localhost";
+    private String host = DEFAULT_HOST;
+    private int port = DEFAULT_PORT;
 
-
-    private int httpPort = HTTP_DEFAULT_PORT;
-
-    private String httpHost = HTTP_DEFAULT_HOST;
-
-    public int getHttpPort() {
-        return httpPort;
+    /**
+     * Get the host for AMQP client (to connect) or server (to bind)
+     *
+     * @return
+     */
+    public String getHost() {
+        return this.host;
     }
 
-    public void setHttpPort(int httpPort) {
-        this.httpPort = httpPort;
+    /**
+     * Set the host for AMQP client (to connect) or server (to bind)
+     *
+     * @param host  AMQP host
+     * @return  this instance for setter chaining
+     */
+    public HttpConfigProperties setHost(String host) {
+        this.host = host;
+        return this;
     }
 
-    public String getHttpHost() {
-        return httpHost;
+
+    public int getPort() {
+        return this.port;
     }
 
-    public void setHttpHost(String httpHost) {
-        this.httpHost = httpHost;
+
+    public void setPort(int port) {
+        this.port = port;
     }
+
 
 }
