@@ -110,30 +110,8 @@ public class HttpMessage {
         this.address = address;
     }
 
-    public HashMap<String, String> getHeader() {
-        return header;
-    }
-
-    public void setHeader(HashMap<String, String> header) {
-        this.header = header;
-    }
-
-    public byte[] getBodyData() {
-        return bodyData;
-    }
-
-    public void setBodyData(byte[] bodyData) {
-        this.bodyData = bodyData;
-    }
-
     private String RequestType;
 
     private String address;
 
-    //map to extract header fields
-    private HashMap<String,String> header;
-
-    //request body data
-
-    private byte[] bodyData;
 }
