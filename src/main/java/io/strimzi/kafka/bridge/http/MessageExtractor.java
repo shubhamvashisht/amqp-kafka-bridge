@@ -18,7 +18,7 @@ public class MessageExtractor {
 
     private void extract(HttpServerRequest request){
 
-        topic = request.getParam("topicname");
+        topic = request.getHeader("topic");
 
         partition = Integer.parseInt(request.getHeader("partition"));
 

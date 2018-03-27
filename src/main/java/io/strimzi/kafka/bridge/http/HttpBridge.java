@@ -1,7 +1,9 @@
 package io.strimzi.kafka.bridge.http;
 
+
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+
 
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
@@ -10,8 +12,6 @@ import io.vertx.core.http.HttpServerRequest;
 public class HttpBridge extends AbstractVerticle {
 
     private HttpServer httpServer;
-    private HttpConfigProperties configProperties;
-    private HttpServerOptions serverOptions;
     private HttpBridgeConfigProperties httpConfigProperties;
 
     @Override
@@ -37,9 +37,10 @@ public class HttpBridge extends AbstractVerticle {
     }
 
     private HttpServerOptions configureServer(){
-        this.serverOptions.setPort(this.httpConfigProperties.getEndpointConfigProperties().getHttpPort());
-        this.serverOptions.setHost(this.httpConfigProperties.getEndpointConfigProperties().getHttpHost());
-        return this.serverOptions;
+        HttpServerOptions serverOptions = new HttpServerOptions();
+        //System.out.println("lolll"+this.httpConfigProperties.getEndpointConfigProperties().getHttpPort());
+        serverOptions.setPort(3000);
+        return serverOptions;
     }
 
     private void serveRequests(HttpServerRequest request){

@@ -7,7 +7,6 @@ import io.strimzi.kafka.bridge.http.converter.HttpMessageConverter;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpConnection;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 
 public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
@@ -34,6 +33,8 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
         httpMessageConverter = new HttpMessageConverter();
 
         KafkaProducerRecord<String,byte[]> record = httpMessageConverter.toKafkaRecord(httpMessage.getTopic(),httpMessage);
+
+        System.out.println(record.topic()+" : "+record.key()+" : "+record.partition());
 
         this.send(record,send->{
             if (send.succeeded()){
