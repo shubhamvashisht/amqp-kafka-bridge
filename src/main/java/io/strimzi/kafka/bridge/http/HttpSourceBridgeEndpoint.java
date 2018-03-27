@@ -36,14 +36,7 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
 
         System.out.println(record.topic()+" : "+record.key()+" : "+record.partition());
 
-        this.send(record,send->{
-            if (send.succeeded()){
-                System.out.println("record published");
-            }
-            else {
-                System.out.println("failed to publish record");
-            }
-        });
+        this.send(record,null);
 
     }
 }

@@ -8,7 +8,9 @@ import io.vertx.core.Future;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
+import org.springframework.stereotype.Component;
 
+@Component
 public class HttpBridge extends AbstractVerticle {
 
     private HttpServer httpServer;
