@@ -37,8 +37,8 @@ public class HttpBridge extends AbstractVerticle {
     }
 
     private HttpServerOptions configureServer(){
-        this.serverOptions.setPort(8080);
-        this.serverOptions.setHost("localhost");
+        this.serverOptions.setPort(this.httpConfigProperties.getEndpointConfigProperties().getHttpPort());
+        this.serverOptions.setHost(this.httpConfigProperties.getEndpointConfigProperties().getHttpHost());
         return this.serverOptions;
     }
 
