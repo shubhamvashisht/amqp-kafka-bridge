@@ -38,8 +38,6 @@ public class HttpBridge extends AbstractVerticle {
             if (res.succeeded()){
                 log.info("running at port {}",httpServer.actualPort());
                 log.info("Kafka bootstrap servers {}", this.httpConfigProperties.getKafkaConfigProperties().getBootstrapServers());
-                log.info(this.httpConfigProperties.getKafkaConfigProperties().getProducerConfig().getValueSerializer());
-                log.info(this.httpConfigProperties.getKafkaConfigProperties().getProducerConfig().getKeySerializer());
 
                 startFuture.complete();
             }
