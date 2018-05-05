@@ -4,10 +4,10 @@ import io.strimzi.kafka.bridge.Endpoint;
 import io.strimzi.kafka.bridge.SourceBridgeEndpoint;
 import io.strimzi.kafka.bridge.converter.MessageConverter;
 import io.strimzi.kafka.bridge.http.converter.HttpMessageConverter;
+import io.strimzi.kafka.bridge.http.extractors.PostRequestExtractor;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpConnection;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 
 public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
@@ -29,7 +29,7 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
         this.httpServerRequest = (HttpServerRequest) endpoint.get();
         this.httpConnection = this.httpServerRequest.connection();
 
-        httpMessage = new MessageExtractor().getHttpMessage(this.httpServerRequest);
+        httpMessage = new PostRequestExtractor().getHttpMessage(this.httpServerRequest);
 
         httpMessageConverter = new HttpMessageConverter();
 

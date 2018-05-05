@@ -34,6 +34,11 @@ public class HttpMessage {
         this.value = value;
     }
 
+    public HttpMessage(String topic, String group_id){
+       this.topic = topic;
+       this.group_id = group_id;
+    }
+
     private int partition;
 
     private String topic;

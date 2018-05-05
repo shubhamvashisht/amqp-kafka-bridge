@@ -1,8 +1,9 @@
-package io.strimzi.kafka.bridge.http;
+package io.strimzi.kafka.bridge.http.extractors;
 
+import io.strimzi.kafka.bridge.http.HttpMessage;
 import io.vertx.core.http.HttpServerRequest;
 
-public class MessageExtractor {
+public class PostRequestExtractor {
 
     private String topic;
 
