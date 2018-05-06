@@ -17,6 +17,7 @@
 package io.strimzi.kafka.bridge;
 
 import io.strimzi.kafka.bridge.config.BridgeConfigProperties;
+import io.strimzi.kafka.bridge.config.KafkaConfigProperties;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -80,7 +81,7 @@ public abstract class SourceBridgeEndpoint implements BridgeEndpoint {
      */
     protected void send(KafkaProducerRecord<String, byte[]> krecord, Handler<AsyncResult<RecordMetadata>> handler) {
 
-        log.debug("Sending to Kafka on topic {} at partition {} and key {}", krecord.topic(), krecord.partition(), krecord.key());
+        log.debug("Sending to Kafka on topic {} at partition {} and key {} and value {}", krecord.topic(), krecord.partition(), krecord.key(), krecord.value());
         if (handler == null) {
             this.producerSettledMode.write(krecord);
         } else {

@@ -283,6 +283,7 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         log.debug("Processing key {} value {} partition {} offset {}",
                 record.key(), record.value(), record.partition(), record.offset());
 
+        this.qos = QoSEndpoint.AT_MOST_ONCE;
         switch (this.qos){
 
             case AT_MOST_ONCE:

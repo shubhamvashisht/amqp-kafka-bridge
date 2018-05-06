@@ -37,9 +37,8 @@ public class Application {
     private static final Logger log = LoggerFactory.getLogger(Application.class);
 
     private final Vertx vertx = Vertx.vertx();
-
-    @Autowired
-    private AmqpBridge bridge;
+/*    @Autowired
+    private AmqpBridge bridge;*/
 
     @Autowired
     private HttpBridge httpBridge;

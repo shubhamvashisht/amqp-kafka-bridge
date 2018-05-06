@@ -1,6 +1,10 @@
 package io.strimzi.kafka.bridge.http.extractors;
 
 import io.strimzi.kafka.bridge.http.HttpMessage;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
 
 public class PostRequestExtractor {
@@ -17,19 +21,21 @@ public class PostRequestExtractor {
 
     private HttpMessage httpMessage;
 
+
     private void extract(HttpServerRequest request){
 
         topic = request.getHeader("topic");
-
+/*
         partition = Integer.parseInt(request.getHeader("partition"));
 
-        offset = Long.parseLong(request.getHeader("offset"));
+        offset = Long.parseLong(request.getHeader("offset"));*/
 
         key = request.getHeader("key");
 
-        request.bodyHandler((buffer -> {
-            value = buffer.getBytes();
-        }));
+        //value = "hey i am KAFKA-BRIDGE".getBytes();
+
+        value = request.getHeader("value").getBytes();
+
     }
 
     public HttpMessage getHttpMessage(HttpServerRequest serverRequest){

@@ -8,11 +8,12 @@ import io.strimzi.kafka.bridge.http.extractors.PostRequestExtractor;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpConnection;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 
 public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
 
-    private HttpConnection httpConnection;
+    //private HttpConnection httpConnection;
 
     private HttpServerRequest httpServerRequest;
 
@@ -20,14 +21,20 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
 
     private MessageConverter httpMessageConverter;
 
+    private HttpServerResponse httpServerResponse;
+
     public HttpSourceBridgeEndpoint(Vertx vertx, HttpBridgeConfigProperties bridgeConfigProperties){
         super(vertx, bridgeConfigProperties);
     }
 
     @Override
     public void handle(Endpoint<?> endpoint) {
+
+        PostRequestExtractor postRequestExtractor = new PostRequestExtractor();
+
         this.httpServerRequest = (HttpServerRequest) endpoint.get();
-        this.httpConnection = this.httpServerRequest.connection();
+        //this.httpConnection = this.httpServerRequest.connection();
+        this.httpServerResponse = httpServerRequest.response();
 
         httpMessage = new PostRequestExtractor().getHttpMessage(this.httpServerRequest);
 
@@ -37,7 +44,16 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
 
         this.open();
 
-        this.send(record,null);
+        this.send(record,recordMetadataAsyncResult -> {
+            if (recordMetadataAsyncResult.succeeded()){
+                String response = "published the message at topic --> "+record.topic()+"";
+                httpServerResponse.putHeader("Content-Length",String.valueOf(response.length()));
+                httpServerResponse.write(response);
+            }
+            else{
+                log.debug("failed");
+            }
+        });
 
     }
 
