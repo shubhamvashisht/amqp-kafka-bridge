@@ -15,6 +15,7 @@ import org.apache.kafka.common.protocol.types.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Properties;
 
 public class HttpBridgeReceiver {
@@ -33,6 +34,17 @@ public class HttpBridgeReceiver {
 
     private HttpServerResponse httpServerResponse;
 
+    private int fetchCount;
+
+    private long lastRecordOffset;
+
+    private int messageCount = 0;
+
+    private StringBuffer response;
+
+    private int totalResponseLength=0;
+
+    private ArrayList<KafkaConsumerRecord<String, byte[]>> records;
 
     public static void main(String[] args) {
 
@@ -45,6 +57,7 @@ public class HttpBridgeReceiver {
         httpBridgeReceiver.httpServer.requestHandler(request -> {
             httpBridgeReceiver.topic = request.getHeader("topic");
             httpBridgeReceiver.groupId = request.getHeader("consumerid");
+            httpBridgeReceiver.fetchCount = Integer.parseInt(request.getHeader("fetchcount"));
             httpBridgeReceiver.initConsumer();
             httpBridgeReceiver.httpServerResponse = request.response();
             httpBridgeReceiver.receiveMessagesFromTopic(httpBridgeReceiver.topic);
@@ -78,12 +91,27 @@ public class HttpBridgeReceiver {
     }
 
     private void receiveMessagesFromTopic(String topic){
+        records = new ArrayList<>();
+        response = new StringBuffer();
         consumer.handler(kafkaConsumerRecord -> {
-            httpServerResponse.putHeader("Content-length",String.valueOf(new String(kafkaConsumerRecord.value()).length()));
-            httpServerResponse.write(new String(kafkaConsumerRecord.value()));
+            records.add(kafkaConsumerRecord);
+            messageCount++;
+            if (messageCount==fetchCount){
+                for(KafkaConsumerRecord<String, byte[]> kafkaRecords : records){
+                    response.append(new String(kafkaRecords.value()));
+                    response.append("\n");
+                }
+                sendHttpResponse(response);
+                consumer.pause();
+            }
         });
 
         consumer.subscribe(topic);
+    }
+
+    private void sendHttpResponse(StringBuffer response){
+        this.httpServerResponse.putHeader("Content-length",String .valueOf(response.length()));
+        this.httpServerResponse.write(response.toString());
     }
 
 }
