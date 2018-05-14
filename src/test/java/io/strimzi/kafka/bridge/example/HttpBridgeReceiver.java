@@ -1,9 +1,7 @@
 package io.strimzi.kafka.bridge.example;
 
-import io.strimzi.kafka.bridge.config.BridgeConfigProperties;
 import io.strimzi.kafka.bridge.config.KafkaConfigProperties;
 import io.strimzi.kafka.bridge.http.HttpBridgeConfigProperties;
-import io.strimzi.kafka.bridge.http.HttpConfigProperties;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
@@ -11,9 +9,6 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.protocol.types.Field;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Properties;
@@ -36,7 +31,7 @@ public class HttpBridgeReceiver {
 
     private int fetchCount;
 
-    private long lastRecordOffset;
+    //private long lastRecordOffset;
 
     private int messageCount = 0;
 
@@ -91,27 +86,29 @@ public class HttpBridgeReceiver {
     }
 
     private void receiveMessagesFromTopic(String topic){
+        consumer.subscribe(topic);
         records = new ArrayList<>();
         response = new StringBuffer();
         consumer.handler(kafkaConsumerRecord -> {
             records.add(kafkaConsumerRecord);
             messageCount++;
             if (messageCount==fetchCount){
+                consumer.pause();
                 for(KafkaConsumerRecord<String, byte[]> kafkaRecords : records){
                     response.append(new String(kafkaRecords.value()));
                     response.append("\n");
                 }
                 sendHttpResponse(response);
-                consumer.pause();
+                records.clear();
+                consumer.close();
+                messageCount = 0;
             }
         });
 
-        consumer.subscribe(topic);
     }
 
     private void sendHttpResponse(StringBuffer response){
         this.httpServerResponse.putHeader("Content-length",String .valueOf(response.length()));
         this.httpServerResponse.write(response.toString());
     }
-
 }
