@@ -17,6 +17,7 @@
 package io.strimzi.kafka.bridge;
 
 import io.strimzi.kafka.bridge.amqp.AmqpBridge;
+import io.strimzi.kafka.bridge.http.HttpBridge;
 import io.vertx.core.Vertx;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,9 @@ public class Application {
     @Autowired
     private AmqpBridge bridge;
 
+    @Autowired
+    private HttpBridge httpBridge;
+
     @PostConstruct
     public void start() {
 
@@ -51,6 +55,16 @@ public class Application {
                 log.debug("Failed to deploy verticle instance", done.cause());
             }
         });
+
+        this.vertx.deployVerticle(this.httpBridge, done -> {
+
+            if (done.succeeded()) {
+                log.debug("Verticle instance deployed [{}]", done.result());
+            } else {
+                log.debug("Failed to deploy verticle instance", done.cause());
+            }
+        });
+
     }
 
     @PreDestroy
