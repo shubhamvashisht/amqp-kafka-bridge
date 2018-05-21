@@ -1,6 +1,8 @@
 package io.strimzi.kafka.bridge.http;
 
 import io.strimzi.kafka.bridge.ConnectionEndpoint;
+import io.strimzi.kafka.bridge.SinkBridgeEndpoint;
+import io.strimzi.kafka.bridge.SourceBridgeEndpoint;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.*;
@@ -111,31 +113,24 @@ public class HttpBridge extends AbstractVerticle {
     }
 
     private void processRequests(HttpServerRequest httpServerRequest){
-        if (httpServerRequest.method()==HttpMethod.GET){
-            log.info("route of GET request is {}",httpServerRequest.path());
+        if (httpServerRequest.path().startsWith("/consumer")){
+            this.processConsumers(httpServerRequest.connection(), httpServerRequest);
         }
-        else if(httpServerRequest.method()==HttpMethod.POST){
-            log.info("route of POST request is {}",httpServerRequest.path());
+        else if(httpServerRequest.path().startsWith("/producer")){
+            this.processProducers(httpServerRequest.connection(), httpServerRequest);
         }
-        else if(httpServerRequest.method() == HttpMethod.DELETE){
-            log.info("route of DELETE request is {}",httpServerRequest.path());
-        }
-        else{
-            log.info("Invalid Request");
+        else {
+            log.debug("invalid request");
         }
     }
 
     private void processConnection(HttpConnection httpConnection){
-        this.endpoints.put(httpConnection, new ConnectionEndpoint());
-        httpConnection.closeHandler(this::connectionCloseHandler);
-    }
-
-    private void connectionCloseHandler(Void v){
-        log.info("connection closed");
-    }
-
-    private void connectionShutdownHandler(Void v){
-
+        if (!this.endpoints.containsKey(httpConnection)) {
+            this.endpoints.put(httpConnection, new ConnectionEndpoint());
+        }
+        httpConnection.closeHandler(aVoid -> {
+            this.closeConnectionEndpoint(httpConnection);
+        });
     }
 
     /**
@@ -157,6 +152,41 @@ public class HttpBridge extends AbstractVerticle {
             connection.close();
             this.endpoints.remove(connection);
         }
+    }
+
+    private void processProducers(HttpConnection connection, HttpServerRequest httpServerRequest) {
+
+        log.info("Remote sender attached {}", connection.remoteAddress());
+
+        ConnectionEndpoint endpoint = this.endpoints.get(connection);
+        SourceBridgeEndpoint source = endpoint.getSource();
+
+        if (source == null){
+            source = new HttpSourceBridgeEndpoint(this.vertx, this.bridgeConfigProperties);
+            source.closeHandler(s -> {
+                endpoint.setSource(null);
+            });
+            source.open();
+            endpoint.setSource(source);
+        }
+
+        source.handle(new HttpEndpoint(httpServerRequest));
+    }
+
+    private void processConsumers(HttpConnection connection, HttpServerRequest httpServerRequest) {
+
+        log.info("Remote receiver attached {}", connection.remoteAddress());
+
+        // create and add a new sink to the map
+        SinkBridgeEndpoint<?,?> sink = new HttpSinkBridgeEndpoint<>(this.vertx, this.bridgeConfigProperties);
+
+        sink.closeHandler(s -> {
+            this.endpoints.get(connection).getSinks().remove(s);
+        });
+        sink.open();
+        this.endpoints.get(connection).getSinks().add(sink);
+
+        sink.handle(new HttpEndpoint(httpServerRequest));
     }
 
 }
