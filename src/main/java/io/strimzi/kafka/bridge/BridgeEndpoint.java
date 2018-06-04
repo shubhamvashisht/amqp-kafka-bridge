@@ -39,6 +39,24 @@ public interface BridgeEndpoint {
 	 * @param endpoint	Remote protocol endpoint to handle
 	 */
 	void handle(Endpoint<?> endpoint);
+
+    /**
+     * handler for creating a consumer
+     * @param endpoint Remote protocol endpoint to handle
+     */
+	void consumerCreateHandler(Endpoint<?> endpoint);
+
+	/**
+	 * handler for subscribing to topic
+	 * @param endpoint Remote protocol endpoint to handle
+	 */
+	void consumerSubscribeHandler(Endpoint<?> endpoint);
+
+	/**
+	 * handler for consuming from kafka
+	 * @param endpoint Remote protocol endpoint to handle
+	 */
+	void consumerConsumeHandler(Endpoint<?> endpoint);
 	
 	/**
 	 * Sets an handler called when a bridge endpoint is closed due to internal processing

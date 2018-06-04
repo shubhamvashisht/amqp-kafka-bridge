@@ -62,6 +62,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
 
     private KafkaConsumer<K, V> consumer;
 
+    private org.apache.kafka.clients.consumer.KafkaConsumer<K, V> kafkaConsumer;
+
     protected String groupId;
     protected String topic;
     protected String kafkaTopic;
@@ -72,6 +74,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
     private int batchSize;
 
     protected QoSEndpoint qos;
+
+    protected long pollTimeout;
 
     // handlers called when partitions are revoked/assigned on rebalancing
     private Handler<Set<TopicPartition>> partitionsRevokedHandler;
@@ -521,4 +525,18 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
             this.commitHandler.handle(commitResult);
         }
     }
+
+    protected void createConsumer(){
+        KafkaConfigProperties consumerConfig = this.bridgeConfigProperties.getKafkaConfigProperties();
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, consumerConfig.getBootstrapServers());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, consumerConfig.getConsumerConfig().getKeyDeserializer());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, consumerConfig.getConsumerConfig().getValueDeserializer());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, this.groupId);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, consumerConfig.getConsumerConfig().isEnableAutoCommit());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getConsumerConfig().getAutoOffsetReset());
+        this.kafkaConsumer = new org.apache.kafka.clients.consumer.KafkaConsumer<K, V>(props);
+    }
+
+
 }
