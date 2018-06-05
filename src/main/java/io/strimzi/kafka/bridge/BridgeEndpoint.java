@@ -44,7 +44,7 @@ public interface BridgeEndpoint {
      * handler for creating a consumer
      * @param endpoint Remote protocol endpoint to handle
      */
-	void consumerCreateHandler(Endpoint<?> endpoint);
+	void consumerCreateHandler(Endpoint<?> endpoint, int cosumerTag);
 
 	/**
 	 * handler for subscribing to topic

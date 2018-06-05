@@ -29,17 +29,12 @@ import io.vertx.kafka.client.consumer.KafkaConsumer;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecords;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Base class for sink bridge endpoints
@@ -75,7 +70,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
 
     protected QoSEndpoint qos;
 
-    protected long pollTimeout;
+    protected long pollTimeout = 1000L;
+    protected int maxRecords = 0;
 
     // handlers called when partitions are revoked/assigned on rebalancing
     private Handler<Set<TopicPartition>> partitionsRevokedHandler;
@@ -92,6 +88,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
     private Handler<KafkaConsumerRecord<K, V>> receivedHandler;
     // handler called after a commit request
     private Handler<AsyncResult<Void>> commitHandler;
+
+    private Handler<ConsumerRecords<K, V>> httpReceivedHandler;
 
     /**
      * Constructor
@@ -526,7 +524,7 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         }
     }
 
-    protected void createConsumer(){
+    protected void createConsumer() {
         KafkaConfigProperties consumerConfig = this.bridgeConfigProperties.getKafkaConfigProperties();
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, consumerConfig.getBootstrapServers());
@@ -535,8 +533,57 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, this.groupId);
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, consumerConfig.getConsumerConfig().isEnableAutoCommit());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getConsumerConfig().getAutoOffsetReset());
+        if (maxRecords > 0) {
+            props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, this.maxRecords);
+        }
         this.kafkaConsumer = new org.apache.kafka.clients.consumer.KafkaConsumer<K, V>(props);
     }
 
+    protected void subscribeTo() {
+        if (this.partition !=null) {
+            log.debug("Assigning to partition {}", this.partition);
+            List<org.apache.kafka.common.PartitionInfo> availablePartitions = this.kafkaConsumer.partitionsFor(this.kafkaTopic);
+            Optional<org.apache.kafka.common.PartitionInfo> requestedPartitionInfo =
+                    availablePartitions.stream().filter(p ->
+                        p.partition() == this.partition).findFirst();
 
+            if (requestedPartitionInfo.isPresent()){
+                log.debug("Requested partition {} present", this.partition);
+                org.apache.kafka.common.TopicPartition topicPartition = new org.apache.kafka.common.TopicPartition(this.kafkaTopic, this.partition);
+
+                //assign specific partition
+                this.kafkaConsumer.assign(Collections.singleton(topicPartition));
+
+                //read from a specific offset
+                if (offset !=null){
+                    this.kafkaConsumer.seek(topicPartition, this.offset);
+                    log.debug("Seeking to offset {}", this.offset);
+                }
+
+            } else {
+                    log.warn("Requested partition {} doesn't exist", this.partition);
+            }
+
+        } else {
+            log.info("No explicit partition for consuming from topic {} (will be automatically assigned", this.kafkaTopic);
+            //Todo: automatic partition assignment
+        }
+    }
+
+    protected void consume() {
+        ConsumerRecords<K, V> consumerRecords = this.kafkaConsumer.poll(pollTimeout);
+        if (consumerRecords != null && consumerRecords.count() > 0){
+            this.httpHandleReceived(consumerRecords);
+        }
+    }
+
+    protected void setHttpReceivedHandler(Handler<ConsumerRecords<K, V>> httpReceivedHandler) {
+        this.httpReceivedHandler = httpReceivedHandler;
+    }
+
+    private void httpHandleReceived(ConsumerRecords<K, V> record) {
+        if (this.httpReceivedHandler != null) {
+            this.httpReceivedHandler.handle(record);
+        }
+    }
 }

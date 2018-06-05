@@ -187,6 +187,21 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 		}
 	}
 
+	@Override
+	public void consumerCreateHandler(Endpoint<?> endpoint, int cosumerTag) {
+
+	}
+
+	@Override
+	public void consumerSubscribeHandler(Endpoint<?> endpoint) {
+
+	}
+
+	@Override
+	public void consumerConsumeHandler(Endpoint<?> endpoint) {
+
+	}
+
 	/**
 	 * Send an AMQP error to the client
 	 *

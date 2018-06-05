@@ -123,6 +123,21 @@ public class AmqpSourceBridgeEndpoint extends SourceBridgeEndpoint {
 		this.receivers.put(receiver.getName(), receiver);
 	}
 
+	@Override
+	public void consumerCreateHandler(Endpoint<?> endpoint, int cosumerTag) {
+
+	}
+
+	@Override
+	public void consumerSubscribeHandler(Endpoint<?> endpoint) {
+
+	}
+
+	@Override
+	public void consumerConsumeHandler(Endpoint<?> endpoint) {
+
+	}
+
 	/**
 	 * Send an "accepted" delivery to the AMQP remote sender
 	 *

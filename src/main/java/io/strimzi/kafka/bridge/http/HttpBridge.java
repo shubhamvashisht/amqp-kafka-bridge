@@ -17,9 +17,13 @@
 package io.strimzi.kafka.bridge.http;
 
 import io.strimzi.kafka.bridge.ConnectionEndpoint;
+import io.strimzi.kafka.bridge.SinkBridgeEndpoint;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
-import io.vertx.core.http.*;
+import io.vertx.core.http.HttpConnection;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +48,8 @@ public class HttpBridge extends AbstractVerticle {
     private Map<HttpConnection, ConnectionEndpoint> endpoints;
 
     private boolean isReady;
+
+    SinkBridgeEndpoint<?,?> sink;
 
     @Autowired
     private void setBridgeConfigProperties(HttpBridgeConfigProperties httpBridgeConfigProperties) {
@@ -124,28 +130,69 @@ public class HttpBridge extends AbstractVerticle {
     }
 
     private void processRequests(HttpServerRequest httpServerRequest) {
-        if (httpServerRequest.method() == HttpMethod.GET) {
-            log.info("route of GET request is {}", httpServerRequest.path());
-        } else if(httpServerRequest.method() == HttpMethod.POST) {
-            log.info("route of POST request is {}", httpServerRequest.path());
-        } else if(httpServerRequest.method() == HttpMethod.DELETE) {
-            log.info("route of DELETE request is {}", httpServerRequest.path());
-        } else {
-            log.info("Invalid Request");
+
+        //All requests with path starting with /consumer are forwarded to {@link HttpSinkBridgeEndpoint}
+        if (httpServerRequest.path().startsWith("/consumer")) {
+
+            String[] params = httpServerRequest.path().split("/");
+
+            //request for creating a consumer
+            if (params[params.length - 1].equalsIgnoreCase("consumer")) {
+
+                //create a sink endpoint
+                sink = new HttpSinkBridgeEndpoint<>(this.vertx, this.bridgeConfigProperties);
+
+                sink.closeHandler(s -> {
+                    this.endpoints.get(httpServerRequest.connection()).getSinks().remove(s);
+                });
+
+                sink.open();
+
+                //add sink to list
+                this.endpoints.get(httpServerRequest.connection()).getSinks().add(sink);
+
+                //consumer id is used later to retrieve sink from index of list.
+                int consumerId = this.endpoints.get(httpServerRequest.connection()).getSinks().indexOf(sink);
+
+                sink.consumerCreateHandler(new HttpEndpoint(httpServerRequest), consumerId);
+
+                log.info("sink position in list is {} ", consumerId);
+            }
+
+            //request for subscribing to a topic
+            else if (params[params.length - 1].equalsIgnoreCase("subscribe")) {
+                //sinkIndex is the index of sink instance in list for which the subscription request is
+                String  sinkIndex = params[params.length - 2];
+
+                //retrieve sink from list
+                sink = this.endpoints.get(httpServerRequest.connection()).getSinks().get(Integer.parseInt(sinkIndex));
+
+                sink.consumerSubscribeHandler(new HttpEndpoint(httpServerRequest));
+            }
+
+            //request to consume messages
+            else if (params[params.length - 1].equalsIgnoreCase("consume")) {
+                //sinkIndex is the index of sink instance in list for which the consume request is
+                String  sinkIndex = params[params.length - 2];
+
+                sink = this.endpoints.get(httpServerRequest.connection()).getSinks().get(Integer.parseInt(sinkIndex));
+
+                sink.consumerConsumeHandler(new HttpEndpoint(httpServerRequest));
+            }
+        }
+        else if (httpServerRequest.path().startsWith("/producer")) {
+            log.info("request to producer");
+        }
+        else {
+            log.info("invalid request");
         }
     }
 
     private void processConnection(HttpConnection httpConnection) {
         this.endpoints.put(httpConnection, new ConnectionEndpoint());
-        httpConnection.closeHandler(this::connectionCloseHandler);
-    }
-
-    private void connectionCloseHandler(Void v) {
-        log.info("connection closed");
-    }
-
-    private void connectionShutdownHandler(Void v) {
-
+        httpConnection.closeHandler(aVoid -> {
+            closeConnectionEndpoint(httpConnection);
+        });
     }
 
     /**
@@ -168,5 +215,4 @@ public class HttpBridge extends AbstractVerticle {
             this.endpoints.remove(connection);
         }
     }
-
 }
