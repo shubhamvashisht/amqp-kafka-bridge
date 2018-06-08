@@ -34,6 +34,12 @@ public class RequestExtractor {
 
     private String maxRecords;
 
+    private String key;
+
+    private String timeStamp;
+
+    private String value;
+
     public String getTopic() {
         return topic;
     }
@@ -81,6 +87,8 @@ public class RequestExtractor {
         //topic+1 to skip initial "/" from path
         //topic = request.path().substring(topicIndex+1);
 
+        key = request.getHeader("key");
+
         topic = request.getHeader("topic");
 
         consumerGroup = request.getHeader("consumer_id");
@@ -91,5 +99,13 @@ public class RequestExtractor {
 
         maxRecords = request.getHeader("max_records");
 
+        timeStamp = request.getHeader("time_Stamp");
+
+        value = request.getHeader("value");
+
     };
+
+    public HttpMessage getHttpMessage(){
+        return new HttpMessage(topic, Integer.parseInt(partition), Long.parseLong(timeStamp), key, value.getBytes());
+    }
 }

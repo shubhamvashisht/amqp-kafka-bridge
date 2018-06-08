@@ -18,6 +18,7 @@ package io.strimzi.kafka.bridge.http;
 
 import io.strimzi.kafka.bridge.ConnectionEndpoint;
 import io.strimzi.kafka.bridge.SinkBridgeEndpoint;
+import io.strimzi.kafka.bridge.SourceBridgeEndpoint;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpConnection;
@@ -131,10 +132,10 @@ public class HttpBridge extends AbstractVerticle {
 
     private void processRequests(HttpServerRequest httpServerRequest) {
 
+        String[] params = httpServerRequest.path().split("/");
+
         //All requests with path starting with /consumer are forwarded to {@link HttpSinkBridgeEndpoint}
         if (httpServerRequest.path().startsWith("/consumer")) {
-
-            String[] params = httpServerRequest.path().split("/");
 
             //request for creating a consumer
             if (params[params.length - 1].equalsIgnoreCase("consumer")) {
@@ -180,8 +181,23 @@ public class HttpBridge extends AbstractVerticle {
                 sink.consumerConsumeHandler(new HttpEndpoint(httpServerRequest));
             }
         }
+        //All requests with path starting with /producer are forwarded to {@link HttpSourceBridgeEndpoint}
         else if (httpServerRequest.path().startsWith("/producer")) {
-            log.info("request to producer");
+
+            ConnectionEndpoint endpoint = this.endpoints.get(httpServerRequest.connection());
+
+            SourceBridgeEndpoint source = endpoint.getSource();
+
+            if (source == null){
+                source = new HttpSourceBridgeEndpoint(this.vertx, this.bridgeConfigProperties);
+                source.closeHandler(s ->{
+                    endpoint.setSource(null);
+                });
+                source.open();
+                endpoint.setSource(source);
+            }
+
+            source.handle(new HttpEndpoint(httpServerRequest));
         }
         else {
             log.info("invalid request");
