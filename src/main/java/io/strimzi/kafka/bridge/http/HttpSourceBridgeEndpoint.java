@@ -18,16 +18,42 @@ package io.strimzi.kafka.bridge.http;
 
 import io.strimzi.kafka.bridge.Endpoint;
 import io.strimzi.kafka.bridge.SourceBridgeEndpoint;
+import io.strimzi.kafka.bridge.converter.MessageConverter;
+import io.strimzi.kafka.bridge.http.converter.HttpJsonMessageConverter;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.kafka.client.producer.KafkaProducerRecord;
 
 public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
+    private MessageConverter messageConverter;
 
-    public HttpSourceBridgeEndpoint(Vertx vertx, HttpBridgeConfigProperties bridgeConfigProperties){
+    public HttpSourceBridgeEndpoint(Vertx vertx, HttpBridgeConfigProperties bridgeConfigProperties) {
         super(vertx, bridgeConfigProperties);
     }
 
     @Override
     public void handle(Endpoint<?> endpoint) {
+        HttpServerRequest httpServerRequest = (HttpServerRequest) endpoint.get();
+
+        messageConverter = new HttpJsonMessageConverter();
+
+        //split path to extract params
+        String[] params = httpServerRequest.path().split("/");
+
+        //path is like this : /producer/{topic_name}, topic will be at the last position of param[]
+        String topic = params[params.length - 1];
+
+
+        httpServerRequest.bodyHandler(buffer -> {
+            KafkaProducerRecord<String , byte[]> kafkaProducerRecord = messageConverter.toKafkaRecord(topic, buffer);
+
+            this.send(kafkaProducerRecord, done -> {
+                if (done.succeeded()) {
+                    log.info("record published at offset {}", done.result().getOffset());
+                }
+            });
+
+        });
 
     }
 }

@@ -125,8 +125,6 @@ public class HttpBridge extends AbstractVerticle {
     }
 
     private void processRequests(HttpServerRequest httpServerRequest) {
-        //split path to extract params
-        String[] params = httpServerRequest.path().split("/");
 
         //As per the doc the request to producer api have path starting with /producer
         if(httpServerRequest.path().startsWith("/producer")) {
