@@ -47,7 +47,7 @@ public class HttpBridge extends AbstractVerticle {
     private boolean isReady;
 
     @Autowired
-    private void setBridgeConfigProperties(HttpBridgeConfigProperties httpBridgeConfigProperties) {
+    public void setBridgeConfigProperties(HttpBridgeConfigProperties httpBridgeConfigProperties) {
         this.bridgeConfigProperties = httpBridgeConfigProperties;
     }
 

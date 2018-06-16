@@ -22,7 +22,10 @@ import io.strimzi.kafka.bridge.converter.MessageConverter;
 import io.strimzi.kafka.bridge.http.converter.HttpJsonMessageConverter;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import io.vertx.kafka.client.producer.RecordMetadata;
 
 public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
     private MessageConverter messageConverter;
@@ -47,13 +50,31 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
         httpServerRequest.bodyHandler(buffer -> {
             KafkaProducerRecord<String , byte[]> kafkaProducerRecord = messageConverter.toKafkaRecord(topic, buffer);
 
-            this.send(kafkaProducerRecord, done -> {
-                if (done.succeeded()) {
-                    log.info("record published at offset {}", done.result().getOffset());
+            this.send(kafkaProducerRecord, writeResult -> {
+                if (writeResult.failed()) {
+
+                    Throwable exception = writeResult.cause();
+                    log.error("Error on delivery to Kafka {}", exception.getMessage());
+                    this.sendDeliveryStatus("Failed", httpServerRequest.response());
+
+                } else {
+
+                    RecordMetadata metadata = writeResult.result();
+                    log.debug("Delivered to Kafka on topic {} at partition {} [{}]", metadata.getTopic(), metadata.getPartition(), metadata.getOffset());
+                    this.sendDeliveryStatus("Accepted", httpServerRequest.response());
+
                 }
             });
 
         });
 
+    }
+
+    private void sendDeliveryStatus(String status, HttpServerResponse response){
+        JsonObject jsonResponse = new JsonObject();
+        jsonResponse.put("status", status);
+        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
+        response.write(jsonResponse.toBuffer());
+        response.end();
     }
 }
