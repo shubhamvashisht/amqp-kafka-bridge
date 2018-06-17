@@ -68,7 +68,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
     @Test
     public void sendSimpleMessage(TestContext context) {
-        String topic = "mytopic";
+        String topic = "sendSimpleMessage";
         kafkaCluster.createTopic(topic, 1, 1);
 
         Async async = context.async();
@@ -80,7 +80,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/producer/"+topic, response ->{
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/producer/"+topic, response -> {
             response.bodyHandler(buffer -> {
                 String deliveryStatus = buffer.toJsonObject().getString("status");
                 context.assertEquals("Accepted", deliveryStatus);
@@ -94,6 +94,99 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
         KafkaConsumer<String, String> consumer = KafkaConsumer.create(this.vertx, config);
         consumer.handler(record -> {
             context.assertEquals(record.value(), value);
+            log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
+                    record.topic(), record.partition(), record.offset(), record.key(), record.value());
+            consumer.close();
+            async.complete();
+        });
+
+        consumer.subscribe(topic, done -> {
+            if (!done.succeeded()) {
+                context.fail(done.cause());
+            }
+        });
+    }
+
+    @Test
+    public void sendSimpleMessageToPartition(TestContext context) {
+        String topic = "sendSimpleMessageToPartition";
+
+        kafkaCluster.createTopic(topic, 2, 1);
+
+        Async async = context.async();
+
+        String value = "Hi, This is kafka bridge";
+
+        int partition = 1;
+
+        JsonObject json = new JsonObject();
+        json.put("value", value);
+        json.put("partition", partition);
+
+        HttpClient client = vertx.createHttpClient();
+
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/producer/"+topic, response -> {
+            response.bodyHandler(buffer -> {
+                String deliveryStatus = buffer.toJsonObject().getString("status");
+                context.assertEquals("Accepted", deliveryStatus);
+            });
+        }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
+
+        Properties config = kafkaCluster.useTo().getConsumerProperties("groupId", null, OffsetResetStrategy.EARLIEST);
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        KafkaConsumer<String, String> consumer = KafkaConsumer.create(this.vertx, config);
+        consumer.handler(record -> {
+            context.assertEquals(record.value(), value);
+            //should be from same partition
+            context.assertEquals(record.partition(), partition);
+            log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
+                    record.topic(), record.partition(), record.offset(), record.key(), record.value());
+            consumer.close();
+            async.complete();
+        });
+
+        consumer.subscribe(topic, done -> {
+            if (!done.succeeded()) {
+                context.fail(done.cause());
+            }
+        });
+    }
+
+    @Test
+    public void sendSimpleMessageWithKey(TestContext context) {
+        String topic = "sendSimpleMessageWithKey";
+
+        kafkaCluster.createTopic(topic, 2, 1);
+
+        Async async = context.async();
+
+        String value = "Hi, This is kafka bridge";
+
+        String key = "my_key";
+
+        JsonObject json = new JsonObject();
+        json.put("value", value);
+        json.put("key", key);
+
+        HttpClient client = vertx.createHttpClient();
+
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/producer/"+topic, response -> {
+            response.bodyHandler(buffer -> {
+                String deliveryStatus = buffer.toJsonObject().getString("status");
+                context.assertEquals("Accepted", deliveryStatus);
+            });
+        }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
+
+        Properties config = kafkaCluster.useTo().getConsumerProperties("groupId", null, OffsetResetStrategy.EARLIEST);
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        KafkaConsumer<String, String> consumer = KafkaConsumer.create(this.vertx, config);
+        consumer.handler(record -> {
+            context.assertEquals(record.value(), value);
+            context.assertEquals(record.key(), key);
             log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
                     record.topic(), record.partition(), record.offset(), record.key(), record.value());
             consumer.close();
