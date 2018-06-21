@@ -43,7 +43,7 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
         //split path to extract params
         String[] params = httpServerRequest.path().split("/");
 
-        //path is like this : /producer/{topic_name}, topic will be at the last position of param[]
+        //path is like this : /topic/{topic_name}, topic will be at the last position of param[]
         String topic = params[params.length - 1];
 
 

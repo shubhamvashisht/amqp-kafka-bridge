@@ -80,7 +80,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/producer/"+topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
             response.bodyHandler(buffer -> {
                 String deliveryStatus = buffer.toJsonObject().getString("status");
                 context.assertEquals("Accepted", deliveryStatus);
@@ -125,7 +125,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/producer/"+topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
             response.bodyHandler(buffer -> {
                 String deliveryStatus = buffer.toJsonObject().getString("status");
                 context.assertEquals("Accepted", deliveryStatus);
@@ -172,7 +172,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/producer/"+topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
             response.bodyHandler(buffer -> {
                 String deliveryStatus = buffer.toJsonObject().getString("status");
                 context.assertEquals("Accepted", deliveryStatus);

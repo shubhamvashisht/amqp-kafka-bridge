@@ -126,8 +126,7 @@ public class HttpBridge extends AbstractVerticle {
 
     private void processRequests(HttpServerRequest httpServerRequest) {
 
-        //As per the doc the request to producer api have path starting with /producer
-        if(httpServerRequest.path().startsWith("/producer")) {
+        if(httpServerRequest.path().startsWith("/topic")) {
 
             ConnectionEndpoint endpoint = this.endpoints.get(httpServerRequest.connection());
 
