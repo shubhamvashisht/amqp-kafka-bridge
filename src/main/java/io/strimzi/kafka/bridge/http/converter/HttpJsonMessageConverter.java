@@ -27,9 +27,9 @@ public class HttpJsonMessageConverter implements MessageConverter<String,byte[],
     @Override
     public KafkaProducerRecord<String, byte[]> toKafkaRecord(String kafkaTopic, Buffer message) {
 
-        int partition = 0;
+        Object partition = null;
 
-        String key = null;
+        Object key = null;
 
         byte[] value = null;
 
@@ -47,7 +47,7 @@ public class HttpJsonMessageConverter implements MessageConverter<String,byte[],
             }
         }
 
-        KafkaProducerRecord<String, byte[]> record = KafkaProducerRecord.create(kafkaTopic, key, value, partition);
+        KafkaProducerRecord<String, byte[]> record = KafkaProducerRecord.create(kafkaTopic,(String) key, value, (Integer) partition);
 
         return record;
     }
