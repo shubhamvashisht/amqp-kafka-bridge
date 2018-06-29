@@ -24,6 +24,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
+import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -43,6 +44,11 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
     private static final String BRIDGE_HOST = "0.0.0.0";
     private static final int BRIDGE_PORT = 8080;
+
+    // for periodic test
+    private static final int PERIODIC_MAX_MESSAGE = 10;
+    private static final int PERIODIC_DELAY = 200;
+    private int count;
 
     private Vertx vertx;
     private HttpBridge httpBridge;
@@ -198,5 +204,63 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
                 context.fail(done.cause());
             }
         });
+    }
+
+    @Test
+    public void sendPeriodicMessage(TestContext context){
+        String topic = "sendPeriodicMessage";
+        kafkaCluster.createTopic(topic, 1, 1);
+
+        Async async = context.async();
+
+        HttpClient client = vertx.createHttpClient();
+
+        Properties config = kafkaCluster.useTo().getConsumerProperties("groupId", null, OffsetResetStrategy.EARLIEST);
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        KafkaConsumer<String, String> consumer = KafkaConsumer.create(this.vertx, config);
+
+        this.count = 0;
+
+        this.vertx.setPeriodic(HttpBridgeTest.PERIODIC_DELAY, timerId -> {
+
+            if (this.count < HttpBridgeTest.PERIODIC_MAX_MESSAGE){
+
+                JsonObject json = new JsonObject();
+                json.put("value", "Periodic message [" + this.count + "]");
+                json.put("key", "key-" + this.count);
+
+                client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
+                    response.bodyHandler(buffer -> {
+                    });
+                }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
+
+                this.count++;
+            } else {
+                this.vertx.cancelTimer(timerId);
+
+                consumer.subscribe(topic, done -> {
+                    if (!done.succeeded()) {
+                        context.fail(done.cause());
+                    }
+                });
+            }
+        });
+
+        consumer.batchHandler(records -> {
+            context.assertEquals(this.count, records.size());
+            for (int i = 0; i < records.size(); i++) {
+                KafkaConsumerRecord<String, String> record = records.recordAt(i);
+                log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
+                        record.topic(), record.partition(), record.offset(), record.key(), record.value());
+                context.assertEquals("key-" + i, record.key());
+            }
+
+            consumer.close();
+            async.complete();
+        });
+
+        consumer.handler(record -> {});
     }
 }
