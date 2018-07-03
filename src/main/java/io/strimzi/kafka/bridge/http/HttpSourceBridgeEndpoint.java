@@ -53,15 +53,13 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
             this.send(kafkaProducerRecord, writeResult -> {
                 if (writeResult.failed()) {
 
-                    Throwable exception = writeResult.cause();
-                    log.error("Error on delivery to Kafka {}", exception.getMessage());
-                    this.sendDeliveryStatus("Failed", httpServerRequest.response());
+                    log.error("Error on delivery to Kafka {}", writeResult.cause().getMessage());
+                    this.sendRejectedDeliveryResponse(httpServerRequest.response());
 
                 } else {
-
                     RecordMetadata metadata = writeResult.result();
                     log.debug("Delivered to Kafka on topic {} at partition {} [{}]", metadata.getTopic(), metadata.getPartition(), metadata.getOffset());
-                    this.sendDeliveryStatus("Accepted", httpServerRequest.response());
+                    this.sendAcceptedDeliveryResponse(metadata, httpServerRequest.response());
 
                 }
             });
@@ -70,11 +68,21 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
 
     }
 
-    private void sendDeliveryStatus(String status, HttpServerResponse response){
+    private void sendAcceptedDeliveryResponse(RecordMetadata metadata, HttpServerResponse response){
+
         JsonObject jsonResponse = new JsonObject();
-        jsonResponse.put("status", status);
+        jsonResponse.put("status", "Accepted");
+        jsonResponse.put("topic", metadata.getTopic());
+        jsonResponse.put("partition", metadata.getPartition());
+        jsonResponse.put("offset", metadata.getOffset());
+
         response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
         response.write(jsonResponse.toBuffer());
         response.end();
+    }
+
+    private void sendRejectedDeliveryResponse(HttpServerResponse response){
+        JsonObject jsonResponse = new JsonObject();
+        jsonResponse.put("status", "rejected");
     }
 }

@@ -115,26 +115,38 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
     @Test
     public void sendSimpleMessageToPartition(TestContext context) {
-        String topic = "sendSimpleMessageToPartition";
+        String kafkTopic = "sendSimpleMessageToPartition";
 
-        kafkaCluster.createTopic(topic, 2, 1);
+        kafkaCluster.createTopic(kafkTopic, 2, 1);
 
         Async async = context.async();
 
         String value = "Hi, This is kafka bridge";
 
-        int partition = 1;
+        int kafkaPartition = 1;
 
         JsonObject json = new JsonObject();
         json.put("value", value);
-        json.put("partition", partition);
+        json.put("partition", kafkaPartition);
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+kafkTopic, response -> {
             response.bodyHandler(buffer -> {
-                String deliveryStatus = buffer.toJsonObject().getString("status");
+                JsonObject bridgeResponse = buffer.toJsonObject();
+                String deliveryStatus = bridgeResponse.getString("status");
+                String topic = bridgeResponse.getString("topic");
+                int partition = bridgeResponse.getInteger("partition");
+                long offset = bridgeResponse.getLong("offset");
+                //check delivery status
                 context.assertEquals("Accepted", deliveryStatus);
+                //check topic
+                context.assertEquals(kafkTopic, topic);
+                //check partition
+                context.assertEquals(kafkaPartition, partition);
+                //check offset. should be 0 as single message is published
+                context.assertEquals(0L, offset);
+
             });
         }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
 
@@ -146,14 +158,14 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
         consumer.handler(record -> {
             context.assertEquals(record.value(), value);
             //should be from same partition
-            context.assertEquals(record.partition(), partition);
+            context.assertEquals(record.partition(), kafkaPartition);
             log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
                     record.topic(), record.partition(), record.offset(), record.key(), record.value());
             consumer.close();
             async.complete();
         });
 
-        consumer.subscribe(topic, done -> {
+        consumer.subscribe(kafkTopic, done -> {
             if (!done.succeeded()) {
                 context.fail(done.cause());
             }
