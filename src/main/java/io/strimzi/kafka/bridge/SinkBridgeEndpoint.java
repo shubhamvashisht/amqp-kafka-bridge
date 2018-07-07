@@ -73,6 +73,11 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
 
     protected QoSEndpoint qos;
 
+    //unique id assigned to every consumer during its creation.
+    protected String consumerInstanceId;
+
+    protected String consumerBaseUri;
+
     // handlers called when partitions are revoked/assigned on rebalancing
     private Handler<Set<TopicPartition>> partitionsRevokedHandler;
     private Handler<Set<TopicPartition>> partitionsAssignedHandler;
