@@ -46,7 +46,6 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
         //path is like this : /topic/{topic_name}, topic will be at the last position of param[]
         String topic = params[params.length - 1];
 
-
         httpServerRequest.bodyHandler(buffer -> {
             KafkaProducerRecord<String , byte[]> kafkaProducerRecord = messageConverter.toKafkaRecord(topic, buffer);
 

@@ -27,10 +27,7 @@ public class HttpJsonMessageConverter implements MessageConverter<String,byte[],
     @Override
     public KafkaProducerRecord<String, byte[]> toKafkaRecord(String kafkaTopic, Buffer message) {
 
-        Object partition = null;
-
-        Object key = null;
-
+        Object partition = null, key = null;
         byte[] value = null;
 
         JsonObject json = message.toJsonObject();

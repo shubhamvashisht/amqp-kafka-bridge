@@ -86,7 +86,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + topic, response -> {
             response.bodyHandler(buffer -> {
                 String deliveryStatus = buffer.toJsonObject().getString("status");
                 context.assertEquals("Accepted", deliveryStatus);
@@ -131,7 +131,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+kafkTopic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + kafkTopic, response -> {
             response.bodyHandler(buffer -> {
                 JsonObject bridgeResponse = buffer.toJsonObject();
                 String deliveryStatus = bridgeResponse.getString("status");
@@ -190,7 +190,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + topic, response -> {
             response.bodyHandler(buffer -> {
                 String deliveryStatus = buffer.toJsonObject().getString("status");
                 context.assertEquals("Accepted", deliveryStatus);
@@ -243,7 +243,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
                 json.put("value", "Periodic message [" + this.count + "]");
                 json.put("key", "key-" + this.count);
 
-                client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/"+topic, response -> {
+                client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + topic, response -> {
                     response.bodyHandler(buffer -> {
                     });
                 }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
