@@ -74,8 +74,8 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
     @Test
     public void sendSimpleMessage(TestContext context) {
-        String topic = "sendSimpleMessage";
-        kafkaCluster.createTopic(topic, 1, 1);
+        String kafkaTopic = "sendSimpleMessage";
+        kafkaCluster.createTopic(kafkaTopic, 1, 1);
 
         Async async = context.async();
 
@@ -86,10 +86,21 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + kafkaTopic, response -> {
             response.bodyHandler(buffer -> {
-                String deliveryStatus = buffer.toJsonObject().getString("status");
+                JsonObject bridgeResponse = buffer.toJsonObject();
+                String deliveryStatus = bridgeResponse.getString("status");
+                String topic = bridgeResponse.getString("topic");
+                String key = bridgeResponse.getString("key");
+                long offset = bridgeResponse.getLong("offset");
+                //check delivery status
                 context.assertEquals("Accepted", deliveryStatus);
+                //check topic
+                context.assertEquals(kafkaTopic, topic);
+                //check offset. should be 0 as single message is published
+                context.assertEquals(0L, offset);
+                //check key. should be null
+                context.assertNull(key);
             });
         }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
 
@@ -100,13 +111,16 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
         KafkaConsumer<String, String> consumer = KafkaConsumer.create(this.vertx, config);
         consumer.handler(record -> {
             context.assertEquals(record.value(), value);
+            context.assertEquals(record.topic(), kafkaTopic);
+            context.assertEquals(record.offset(), 0L);
+            context.assertNull(record.key());
             log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
                     record.topic(), record.partition(), record.offset(), record.key(), record.value());
             consumer.close();
             async.complete();
         });
 
-        consumer.subscribe(topic, done -> {
+        consumer.subscribe(kafkaTopic, done -> {
             if (!done.succeeded()) {
                 context.fail(done.cause());
             }
@@ -115,9 +129,9 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
     @Test
     public void sendSimpleMessageToPartition(TestContext context) {
-        String kafkTopic = "sendSimpleMessageToPartition";
+        String kafkaTopic = "sendSimpleMessageToPartition";
 
-        kafkaCluster.createTopic(kafkTopic, 2, 1);
+        kafkaCluster.createTopic(kafkaTopic, 2, 1);
 
         Async async = context.async();
 
@@ -131,7 +145,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + kafkTopic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + kafkaTopic, response -> {
             response.bodyHandler(buffer -> {
                 JsonObject bridgeResponse = buffer.toJsonObject();
                 String deliveryStatus = bridgeResponse.getString("status");
@@ -141,7 +155,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
                 //check delivery status
                 context.assertEquals("Accepted", deliveryStatus);
                 //check topic
-                context.assertEquals(kafkTopic, topic);
+                context.assertEquals(kafkaTopic, topic);
                 //check partition
                 context.assertEquals(kafkaPartition, partition);
                 //check offset. should be 0 as single message is published
@@ -159,13 +173,16 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
             context.assertEquals(record.value(), value);
             //should be from same partition
             context.assertEquals(record.partition(), kafkaPartition);
+            context.assertEquals(record.topic(), kafkaTopic);
+            context.assertEquals(record.offset(), 0L);
+            context.assertNull(record.key());
             log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
                     record.topic(), record.partition(), record.offset(), record.key(), record.value());
             consumer.close();
             async.complete();
         });
 
-        consumer.subscribe(kafkTopic, done -> {
+        consumer.subscribe(kafkaTopic, done -> {
             if (!done.succeeded()) {
                 context.fail(done.cause());
             }
@@ -174,26 +191,34 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
     @Test
     public void sendSimpleMessageWithKey(TestContext context) {
-        String topic = "sendSimpleMessageWithKey";
+        String kafkaTopic = "sendSimpleMessageWithKey";
 
-        kafkaCluster.createTopic(topic, 2, 1);
+        kafkaCluster.createTopic(kafkaTopic, 2, 1);
 
         Async async = context.async();
 
         String value = "Hi, This is kafka bridge";
 
-        String key = "my_key";
+        String kafkaKey = "my_key";
 
         JsonObject json = new JsonObject();
         json.put("value", value);
-        json.put("key", key);
+        json.put("key", kafkaKey);
 
         HttpClient client = vertx.createHttpClient();
 
-        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + topic, response -> {
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/topic/" + kafkaTopic, response -> {
             response.bodyHandler(buffer -> {
-                String deliveryStatus = buffer.toJsonObject().getString("status");
+                JsonObject bridgeResponse = buffer.toJsonObject();
+                String deliveryStatus = bridgeResponse.getString("status");
+                String topic = bridgeResponse.getString("topic");
+                long offset = bridgeResponse.getLong("offset");
+                //check delivery status
                 context.assertEquals("Accepted", deliveryStatus);
+                //check topic
+                context.assertEquals(kafkaTopic, topic);
+                //check offset. should be 0 as single message is published
+                context.assertEquals(0L, offset);
             });
         }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
 
@@ -204,14 +229,16 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
         KafkaConsumer<String, String> consumer = KafkaConsumer.create(this.vertx, config);
         consumer.handler(record -> {
             context.assertEquals(record.value(), value);
-            context.assertEquals(record.key(), key);
+            context.assertEquals(record.key(), kafkaKey);
+            context.assertEquals(record.topic(), kafkaTopic);
+            context.assertEquals(record.offset(), 0L);
             log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
                     record.topic(), record.partition(), record.offset(), record.key(), record.value());
             consumer.close();
             async.complete();
         });
 
-        consumer.subscribe(topic, done -> {
+        consumer.subscribe(kafkaTopic, done -> {
             if (!done.succeeded()) {
                 context.fail(done.cause());
             }
@@ -267,6 +294,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
                 log.info("Message consumed topic={} partition={} offset={}, key={}, value={}",
                         record.topic(), record.partition(), record.offset(), record.key(), record.value());
                 context.assertEquals("key-" + i, record.key());
+                context.assertEquals("Periodic message [" + i + "]", record.value());
             }
 
             consumer.close();
