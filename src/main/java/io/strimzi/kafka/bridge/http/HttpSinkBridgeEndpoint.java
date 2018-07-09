@@ -1,14 +1,28 @@
+/*
+ * Copyright 2016 Red Hat Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.strimzi.kafka.bridge.http;
 
 import io.strimzi.kafka.bridge.Endpoint;
 import io.strimzi.kafka.bridge.SinkBridgeEndpoint;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 
-import java.util.Arrays;
 import java.util.UUID;
 
 public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
@@ -28,19 +42,17 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
     @Override
     public void handle(Endpoint<?> endpoint) {
+
+    }
+
+    @Override
+    public void createConsumer(Endpoint<?> endpoint) {
         httpServerRequest = (HttpServerRequest) endpoint.get();
 
         String requestPath = httpServerRequest.path();
 
         //request path always starts with "/" which is not required in path parameters
         String [] params = requestPath.substring(1).split("/");
-        log.debug("path params are {}", Arrays.toString(params));
-
-        //consumer creation
-        // The path is like this: consumers/{consumer-group}
-        // spliting this path will return an array of size 2.
-        // param[0] = "consumers", param[1] = "{consumer-group}"
-        if (httpServerRequest.method() == HttpMethod.POST && params.length == 2) {
 
             //set group id of consumer
             groupId = params[1];
@@ -67,12 +79,20 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                 consumerBaseUri = requestUri+"instances/"+consumerInstanceId;
 
                 //create the consumer
-                this.initConsumer();
+                this.createKafkaConsumer();
 
                 //send consumer instance id(name) and base URI as response
                 sendConsumerCreationResponse(httpServerRequest.response(), consumerInstanceId, consumerBaseUri);
             });
         }
+
+    @Override
+    public void subscribeToTopic(Endpoint<?> endpoint) {
+
+    }
+
+    @Override
+    public void consume(Endpoint<?> endpoint) {
 
     }
 

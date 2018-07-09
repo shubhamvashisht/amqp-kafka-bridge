@@ -146,23 +146,30 @@ public class HttpBridge extends AbstractVerticle {
 
             source.handle(new HttpEndpoint(httpServerRequest));
         }
-        //every consumer API endpoint starts with path /consumers
-        else if (requestPath.startsWith("/consumers")){
-            SinkBridgeEndpoint<?,?> sink = new HttpSinkBridgeEndpoint<>(this.vertx, this.bridgeConfigProperties);
-            sink.closeHandler(s -> {
-                this.endpoints.get(httpServerRequest.connection()).getSinks().remove(s);
-            });
 
-            sink.open();
+        RequestType requestType = RequestIdentifier.getRequestType(httpServerRequest);
 
-            //add sink to list
-            this.endpoints.get(httpServerRequest.connection()).getSinks().add(sink);
+        switch (requestType) {
 
-            sink.handle(new HttpEndpoint(httpServerRequest));
+            //create a sink endpoint and initialize consumer
+            case CREATE:
+                SinkBridgeEndpoint<?,?> sink = new HttpSinkBridgeEndpoint<>(this.vertx, this.bridgeConfigProperties);
+                sink.closeHandler(s -> {
+                    this.endpoints.get(httpServerRequest.connection()).getSinks().remove(s);
+                });
 
-        } else {
-            log.info("invalid request");
+                sink.open();
+
+                //add sink to list
+                this.endpoints.get(httpServerRequest.connection()).getSinks().add(sink);
+
+                sink.createConsumer(new HttpEndpoint(httpServerRequest));
+                break;
+
+            case INVALID:
+                log.info("invalid request");
         }
+
     }
 
     private void processConnection(HttpConnection httpConnection) {

@@ -47,7 +47,7 @@ import java.util.Set;
  * @param <K>   type of Kafka message key
  * @param <V>   type of Kafka message payload
  */
-public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
+public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, BridgeConsumerEndpoint {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -375,6 +375,68 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         }
     }
 
+    protected void subscribeWithoutHandler(){
+        if (this.partition != null) {
+            // read from a specified partition
+            log.debug("Assigning to partition {}", this.partition);
+            this.consumer.partitionsFor(this.kafkaTopic, this::partitionsForHandler);
+        } else {
+            log.info("No explicit partition for consuming from topic {} (will be automatically assigned)",
+                    this.kafkaTopic);
+            automaticPartitionAssignmentWithoutHandler();
+        }
+    }
+
+    /**
+     * Setup the automatic revoke and assign partitions (due to rebalancing)
+     * and start the subscription request for a topic
+     */
+    private void automaticPartitionAssignmentWithoutHandler() {
+        this.consumer.partitionsRevokedHandler(partitions -> {
+
+            log.debug("Partitions revoked {}", partitions.size());
+
+            if (!partitions.isEmpty()) {
+
+                if (log.isDebugEnabled()) {
+                    for (TopicPartition partition : partitions) {
+                        log.debug("topic {} partition {}", partition.getTopic(), partition.getPartition());
+                    }
+                }
+
+                // sender QoS unsettled (AT_LEAST_ONCE), need to commit offsets before partitions are revoked
+                if (this.qos == QoSEndpoint.AT_LEAST_ONCE) {
+                    // commit all tracked offsets for partitions
+                    this.commitOffsets(true);
+                }
+            }
+
+            this.handlePartitionsRevoked(partitions);
+        });
+
+        this.consumer.partitionsAssignedHandler(partitions -> {
+
+            log.debug("Partitions assigned {}", partitions.size());
+
+            if (!partitions.isEmpty()) {
+
+                if (log.isDebugEnabled()) {
+                    for (TopicPartition partition : partitions) {
+                        log.debug("topic {} partition {}", partition.getTopic(), partition.getPartition());
+                    }
+                }
+            }
+
+            partitionsAssigned(partitions);
+        });
+
+        this.consumer.subscribe(this.kafkaTopic, subscribeResult-> {
+            if (subscribeResult.succeeded()){
+                log.info("subscribe to topic {}", this.kafkaTopic);
+            }
+        });
+    }
+
     /**
      * Pause the underlying Kafka consumer
      */
@@ -525,5 +587,18 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         if (this.commitHandler != null) {
             this.commitHandler.handle(commitResult);
         }
+    }
+
+    protected void createKafkaConsumer(){
+        // create a consumer
+        KafkaConfigProperties consumerConfig = this.bridgeConfigProperties.getKafkaConfigProperties();
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, consumerConfig.getBootstrapServers());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, consumerConfig.getConsumerConfig().getKeyDeserializer());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, consumerConfig.getConsumerConfig().getValueDeserializer());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, this.groupId);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, consumerConfig.getConsumerConfig().isEnableAutoCommit());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getConsumerConfig().getAutoOffsetReset());
+        this.consumer = KafkaConsumer.create(this.vertx, props);
     }
 }

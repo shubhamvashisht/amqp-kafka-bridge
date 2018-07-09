@@ -397,4 +397,19 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 		else
 			throw new IllegalArgumentException("Proton QoS not supported !");
 	}
+
+	@Override
+	public void createConsumer(Endpoint<?> endpoint) {
+
+	}
+
+	@Override
+	public void subscribeToTopic(Endpoint<?> endpoint) {
+
+	}
+
+	@Override
+	public void consume(Endpoint<?> endpoint) {
+
+	}
 }
