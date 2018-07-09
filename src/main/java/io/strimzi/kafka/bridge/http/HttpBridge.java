@@ -126,25 +126,30 @@ public class HttpBridge extends AbstractVerticle {
 
     private void processRequests(HttpServerRequest httpServerRequest) {
 
-        if(httpServerRequest.path().startsWith("/topic")) {
+        RequestType requestType = RequestIdentifier.getRequestType(httpServerRequest);
 
-            ConnectionEndpoint endpoint = this.endpoints.get(httpServerRequest.connection());
+        switch (requestType){
+            case PRODUCE:
+                ConnectionEndpoint endpoint = this.endpoints.get(httpServerRequest.connection());
 
-            SourceBridgeEndpoint source = endpoint.getSource();
+                SourceBridgeEndpoint source = endpoint.getSource();
 
-            if (source == null) {
-                source = new HttpSourceBridgeEndpoint(this.vertx, this.bridgeConfigProperties);
-                source.closeHandler(s -> {
-                    endpoint.setSource(null);
-                });
-                source.open();
-                endpoint.setSource(source);
-            }
+                if (source == null) {
+                    source = new HttpSourceBridgeEndpoint(this.vertx, this.bridgeConfigProperties);
+                    source.closeHandler(s -> {
+                        endpoint.setSource(null);
+                    });
+                    source.open();
+                    endpoint.setSource(source);
+                }
+                source.handle(new HttpEndpoint(httpServerRequest));
 
-            source.handle(new HttpEndpoint(httpServerRequest));
-        } else {
-            log.info("invalid request");
+                break;
+
+            case INVALID:
+                log.info("invalid request");
         }
+
     }
 
     private void processConnection(HttpConnection httpConnection) {
