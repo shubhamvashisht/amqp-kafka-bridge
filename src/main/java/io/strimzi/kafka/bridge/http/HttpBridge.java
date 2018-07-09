@@ -125,6 +125,7 @@ public class HttpBridge extends AbstractVerticle {
     }
 
     private void processRequests(HttpServerRequest httpServerRequest) {
+        log.info("request method is {} and request path is {}", httpServerRequest.method(), httpServerRequest.path());
 
         RequestType requestType = RequestIdentifier.getRequestType(httpServerRequest);
 

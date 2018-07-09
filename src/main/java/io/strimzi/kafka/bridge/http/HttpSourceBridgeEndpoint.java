@@ -53,7 +53,7 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
             this.send(kafkaProducerRecord, writeResult -> {
                 if (writeResult.failed()) {
 
-                    log.error("Error on delivery to Kafka {}", writeResult.cause().getMessage());
+                    log.error("Error on delivery to Kafka {}", writeResult.cause());
                     this.sendRejectedDeliveryResponse(httpServerRequest.response());
 
                 } else {
