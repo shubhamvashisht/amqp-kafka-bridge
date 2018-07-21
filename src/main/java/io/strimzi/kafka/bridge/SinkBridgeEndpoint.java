@@ -47,7 +47,7 @@ import java.util.Set;
  * @param <K>   type of Kafka message key
  * @param <V>   type of Kafka message payload
  */
-public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
+public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, BridgeConsumerEndpoint {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -72,6 +72,11 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
     private int batchSize;
 
     protected QoSEndpoint qos;
+
+    //unique id assigned to every consumer during its creation.
+    public String consumerInstanceId;
+
+    public String consumerBaseUri;
 
     // handlers called when partitions are revoked/assigned on rebalancing
     private Handler<Set<TopicPartition>> partitionsRevokedHandler;
