@@ -83,7 +83,28 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
     @Override
     public void subscribeToTopic(Endpoint<?> endpoint) {
+        httpServerRequest = (HttpServerRequest) endpoint.get();
 
+        httpServerRequest.bodyHandler(buffer -> {
+
+            this.topic = buffer.toJsonObject().getString("topic");
+            this.partition = buffer.toJsonObject().getInteger("partition");
+
+            if (buffer.toJsonObject().containsKey("offset")) {
+                this.offset = Long.parseLong(buffer.toJsonObject().getString("offset"));
+            }
+
+            this.kafkaTopic = this.topic;
+
+            this.setSubscribeHandler(subscribeResult -> {
+                if (subscribeResult.succeeded()) {
+                    sendConsumerSubscriptionResponse(httpServerRequest.response());
+                }
+            });
+
+            this.justSubscribe();
+
+        });
     }
 
     @Override
@@ -91,7 +112,7 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
     }
 
-    private void sendConsumerCreationResponse(HttpServerResponse response, String instanceId, String uri){
+    private void sendConsumerCreationResponse(HttpServerResponse response, String instanceId, String uri) {
         JsonObject jsonResponse = new JsonObject();
         jsonResponse.put("instance_id", instanceId);
         jsonResponse.put("base_uri", uri);
@@ -100,4 +121,14 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
         response.write(jsonResponse.toBuffer());
         response.end();
     }
+
+    private void sendConsumerSubscriptionResponse(HttpServerResponse response) {
+        JsonObject jsonResponse = new JsonObject();
+        jsonResponse.put("subscription_status", "subscribed");
+
+        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
+        response.write(jsonResponse.toBuffer());
+        response.end();
+    }
+
 }

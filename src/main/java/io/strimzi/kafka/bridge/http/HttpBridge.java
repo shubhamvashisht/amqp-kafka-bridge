@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -161,6 +162,21 @@ public class HttpBridge extends AbstractVerticle {
                 this.endpoints.get(httpServerRequest.connection()).getSinks().add(sink);
 
                 sink.createConsumer(new HttpEndpoint(httpServerRequest));
+                break;
+
+            case SUBSCRIBE:
+
+                String instanceId = PathParamsExtractor.getConsumerSubscriptionParams(httpServerRequest).get("instance-id");
+
+                List<SinkBridgeEndpoint> sinkList = this.endpoints.get(httpServerRequest.connection()).getSinks();
+
+                //consumer lookup
+                final SinkBridgeEndpoint subscribeSink = sinkList.stream()
+                        .filter(sink1 -> sink1.consumerInstanceId.equals(instanceId))
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("No consumer found with given instance-id"));
+
+                subscribeSink.subscribeToTopic(new HttpEndpoint(httpServerRequest));
                 break;
 
             case INVALID:
