@@ -19,6 +19,7 @@ package io.strimzi.kafka.bridge.amqp;
 import io.strimzi.kafka.bridge.Endpoint;
 import io.strimzi.kafka.bridge.SourceBridgeEndpoint;
 import io.strimzi.kafka.bridge.converter.MessageConverter;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import io.vertx.kafka.client.producer.RecordMetadata;
@@ -121,6 +122,11 @@ public class AmqpSourceBridgeEndpoint extends SourceBridgeEndpoint {
 		receiver.open();
 
 		this.receivers.put(receiver.getName(), receiver);
+	}
+
+	@Override
+	public void handle(Endpoint<?> endpoint, Handler<String> handler) {
+
 	}
 
 	/**

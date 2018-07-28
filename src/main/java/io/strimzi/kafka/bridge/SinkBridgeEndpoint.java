@@ -47,7 +47,7 @@ import java.util.Set;
  * @param <K>   type of Kafka message key
  * @param <V>   type of Kafka message payload
  */
-public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, BridgeConsumerEndpoint {
+public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -74,9 +74,11 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, Bridge
     protected QoSEndpoint qos;
 
     //unique id assigned to every consumer during its creation.
-    public String consumerInstanceId;
+    protected String consumerInstanceId;
 
-    public String consumerBaseUri;
+    protected String consumerBaseUri;
+
+    private boolean shouldAttachSubscriberHandler;
 
     // handlers called when partitions are revoked/assigned on rebalancing
     private Handler<Set<TopicPartition>> partitionsRevokedHandler;
@@ -131,7 +133,7 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, Bridge
     /**
      * Kafka consumer initialization. It should be the first call for preparing the Kafka consumer.
      */
-    protected void initConsumer() {
+    protected void initConsumer(boolean shouldAttachBatchHandler) {
 
         // create a consumer
         KafkaConfigProperties consumerConfig = this.bridgeConfigProperties.getKafkaConfigProperties();
@@ -143,14 +145,19 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, Bridge
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, consumerConfig.getConsumerConfig().isEnableAutoCommit());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerConfig.getConsumerConfig().getAutoOffsetReset());
         this.consumer = KafkaConsumer.create(this.vertx, props);
+
+        if (shouldAttachBatchHandler)
         this.consumer.batchHandler(this::handleKafkaBatch);
     }
 
     /**
-     * Subscribe to the topic. It should be the next call after the {@link #initConsumer()} after getting
+     * Subscribe to the topic. It should be the next call after the {@link #initConsumer(boolean shoudlAttachHandler)} after getting
      * the topic information in order to subscribe to it.
      */
-    protected void subscribe() {
+    protected void subscribe(boolean shouldAttachHandler) {
+
+        this.shouldAttachSubscriberHandler = shouldAttachHandler;
+
         if (this.partition != null) {
             // read from a specified partition
             log.debug("Assigning to partition {}", this.partition);
@@ -266,6 +273,7 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, Bridge
                 return;
             }
 
+            if (shouldAttachSubscriberHandler)
             this.consumer.handler(this::handleKafkaRecord);
         });
     }
@@ -276,6 +284,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, Bridge
     private void partitionsAssigned(Set<TopicPartition> partitions) {
 
         this.handlePartitionsAssigned(partitions);
+
+        if (shouldAttachSubscriberHandler)
         this.consumer.handler(this::handleKafkaRecord);
     }
 
@@ -524,131 +534,6 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint, Bridge
     private void handleCommit(AsyncResult<Void> commitResult) {
         if (this.commitHandler != null) {
             this.commitHandler.handle(commitResult);
-        }
-    }
-
-    /**
-     * subscribe to a topic.
-     * if partition is not set explicitly then assign one automatically
-     * unlike subscribe(), it does not set handler for consuming records followed by subscription.
-     */
-    protected void justSubscribe() {
-        if (this.partition != null) {
-            // read from a specified partition
-            log.debug("Assigning to partition {}", this.partition);
-            this.consumer.partitionsFor(this.kafkaTopic, this::specificPartitionHandler);
-        } else {
-            log.info("No explicit partition for consuming from topic {} (will be automatically assigned)",
-                    this.kafkaTopic);
-            automaticPartitionAssignmentWithoutHandler();
-        }
-    }
-
-    /**
-     * Setup the automatic revoke and assign partitions (due to rebalancing)
-     * and start the subscription request for a topic
-     * this method does not set handler i.e. does not start receiving records just after subscription
-     * records will be fetched by manual poll() upon request
-     */
-    private void automaticPartitionAssignmentWithoutHandler() {
-        this.consumer.partitionsRevokedHandler(partitions -> {
-
-            log.debug("Partitions revoked {}", partitions.size());
-
-            if (!partitions.isEmpty()) {
-
-                if (log.isDebugEnabled()) {
-                    for (TopicPartition partition : partitions) {
-                        log.debug("topic {} partition {}", partition.getTopic(), partition.getPartition());
-                    }
-                }
-
-                // sender QoS unsettled (AT_LEAST_ONCE), need to commit offsets before partitions are revoked
-                if (this.qos == QoSEndpoint.AT_LEAST_ONCE) {
-                    // commit all tracked offsets for partitions
-                    this.commitOffsets(true);
-                }
-            }
-
-            this.handlePartitionsRevoked(partitions);
-        });
-
-        this.consumer.partitionsAssignedHandler(partitions -> {
-
-            log.debug("Partitions assigned {}", partitions.size());
-
-            if (!partitions.isEmpty()) {
-
-                if (log.isDebugEnabled()) {
-                    for (TopicPartition partition : partitions) {
-                        log.debug("topic {} partition {}", partition.getTopic(), partition.getPartition());
-                    }
-                }
-            }
-
-            this.handlePartitionsAssigned(partitions);
-        });
-
-        this.consumer.subscribe(this.kafkaTopic, subscribeResult-> {
-
-            this.handleSubscribe(subscribeResult);
-
-            if (subscribeResult.succeeded()) {
-                log.debug("subscribed to topic {}", this.kafkaTopic);
-            }
-        });
-    }
-
-    /**
-     * Execute a request for assigning a specific partition
-     *
-     * @param partitionsResult	list of requested and assigned partitions
-     */
-    private void specificPartitionHandler(AsyncResult<List<PartitionInfo>> partitionsResult) {
-
-        if (partitionsResult.failed()) {
-            this.handlePartition(Future.failedFuture(partitionsResult.cause()));
-            return;
-        }
-
-        log.debug("Getting partitions for {}", this.kafkaTopic);
-        List<PartitionInfo> availablePartitions = partitionsResult.result();
-        Optional<PartitionInfo> requestedPartitionInfo =
-                availablePartitions.stream().filter(p -> p.getPartition() == this.partition).findFirst();
-
-        this.handlePartition(Future.succeededFuture(requestedPartitionInfo));
-
-        if (requestedPartitionInfo.isPresent()) {
-            log.debug("Requested partition {} present", this.partition);
-            TopicPartition topicPartition = new TopicPartition(this.kafkaTopic, this.partition);
-
-            this.consumer.assign(Collections.singleton(topicPartition), assignResult-> {
-
-                this.handleAssign(assignResult);
-                if (assignResult.failed()) {
-                    return;
-                }
-
-                log.debug("Assigned to {} partition {}", this.kafkaTopic, this.partition);
-                // start reading from specified offset inside partition
-                if (this.offset != null) {
-
-                    log.debug("Seeking to offset {}", this.offset);
-
-                    this.consumer.seek(topicPartition, this.offset, seekResult ->{
-
-                        this.handleSeek(seekResult);
-                        if (seekResult.failed()) {
-                            return;
-                        }
-                        this.handlePartitionsAssigned(Collections.singleton(topicPartition));
-                    });
-                } else {
-                    this.handlePartitionsAssigned(Collections.singleton(topicPartition));
-                }
-            });
-        } else {
-            log.warn("Requested partition {} doesn't exist", this.partition);
         }
     }
 }

@@ -22,6 +22,7 @@ import io.strimzi.kafka.bridge.SinkBridgeEndpoint;
 import io.strimzi.kafka.bridge.converter.MessageConverter;
 import io.strimzi.kafka.bridge.tracker.SimpleOffsetTracker;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.kafka.client.common.PartitionInfo;
 import io.vertx.kafka.client.common.TopicPartition;
@@ -163,7 +164,7 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 				this.offsetTracker = new SimpleOffsetTracker(this.kafkaTopic);
 				this.qos = this.mapQoS(this.sender.getQoS());
 				
-				this.initConsumer();
+				this.initConsumer(true);
 				// Set up flow control
 				// (*before* subscribe in case we start with no credit!)
 
@@ -178,13 +179,18 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 				
 				this.flowCheck();
 				// Subscribe to the topic
-				this.subscribe();
+				this.subscribe(true);
 			}
 		} catch (AmqpErrorConditionException e) {
 			AmqpBridge.detachWithError(link, e.toCondition());
 			this.handleClose();
 			return;
 		}
+	}
+
+	@Override
+	public void handle(Endpoint<?> endpoint, Handler<String> handler) {
+
 	}
 
 	/**
@@ -396,20 +402,5 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 			return QoSEndpoint.AT_LEAST_ONCE;
 		else
 			throw new IllegalArgumentException("Proton QoS not supported !");
-	}
-
-	@Override
-	public void createConsumer(Endpoint<?> endpoint) {
-
-	}
-
-	@Override
-	public void subscribeToTopic(Endpoint<?> endpoint) {
-
-	}
-
-	@Override
-	public void consume(Endpoint<?> endpoint) {
-
 	}
 }

@@ -28,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,6 +44,8 @@ public class HttpBridge extends AbstractVerticle {
     private HttpBridgeConfigProperties bridgeConfigProperties;
 
     private Map<HttpConnection, ConnectionEndpoint> endpoints;
+
+    private Map<String, SinkBridgeEndpoint> httpSinkEndpoints;
 
     private boolean isReady;
 
@@ -79,7 +80,7 @@ public class HttpBridge extends AbstractVerticle {
 
         log.info("Starting HTTP-Kafka bridge verticle...");
         this.endpoints = new HashMap<>();
-
+        this.httpSinkEndpoints = new HashMap<>();
         this.bindHttpServer(startFuture);
     }
 
@@ -90,15 +91,21 @@ public class HttpBridge extends AbstractVerticle {
 
         this.isReady = false;
 
+        //Consumers cleanup
+        this.httpSinkEndpoints.forEach((consumerId, httpEndpoint) -> {
+            if (httpEndpoint != null){
+                httpEndpoint.close();
+            }
+        });
+        this.httpSinkEndpoints.clear();
+
+        //prducer cleanup
         // for each connection, we have to close the connection itself but before that
         // all the sink/source endpoints (so the related links inside each of them)
         this.endpoints.forEach((connection, endpoint) -> {
 
             if (endpoint.getSource() != null) {
                 endpoint.getSource().close();
-            }
-            if (!endpoint.getSinks().isEmpty()) {
-                endpoint.getSinks().stream().forEach(sink -> sink.close());
             }
             connection.close();
         });
@@ -153,30 +160,24 @@ public class HttpBridge extends AbstractVerticle {
             case CREATE:
                 SinkBridgeEndpoint<?,?> sink = new HttpSinkBridgeEndpoint<>(this.vertx, this.bridgeConfigProperties);
                 sink.closeHandler(s -> {
-                    this.endpoints.get(httpServerRequest.connection()).getSinks().remove(s);
+                    this.httpSinkEndpoints.remove(sink);
                 });
 
                 sink.open();
 
-                //add sink to list
-                this.endpoints.get(httpServerRequest.connection()).getSinks().add(sink);
+                sink.handle(new HttpEndpoint(httpServerRequest), consumerId -> {
+                    this.httpSinkEndpoints.put(consumerId, sink);
+                });
 
-                sink.createConsumer(new HttpEndpoint(httpServerRequest));
                 break;
 
             case SUBSCRIBE:
 
                 String instanceId = PathParamsExtractor.getConsumerSubscriptionParams(httpServerRequest).get("instance-id");
 
-                List<SinkBridgeEndpoint> sinkList = this.endpoints.get(httpServerRequest.connection()).getSinks();
+                final SinkBridgeEndpoint subscribeSink = this.httpSinkEndpoints.get(instanceId);
 
-                //consumer lookup
-                final SinkBridgeEndpoint subscribeSink = sinkList.stream()
-                        .filter(sink1 -> sink1.consumerInstanceId.equals(instanceId))
-                        .findFirst()
-                        .orElseThrow(() -> new RuntimeException("No consumer found with given instance-id"));
-
-                subscribeSink.subscribeToTopic(new HttpEndpoint(httpServerRequest));
+                subscribeSink.handle(new HttpEndpoint(httpServerRequest));
                 break;
 
             case INVALID:
@@ -204,9 +205,6 @@ public class HttpBridge extends AbstractVerticle {
             ConnectionEndpoint endpoint = this.endpoints.get(connection);
             if (endpoint.getSource() != null) {
                 endpoint.getSource().close();
-            }
-            if (!endpoint.getSinks().isEmpty()) {
-                endpoint.getSinks().stream().forEach(sink -> sink.close());
             }
             this.endpoints.remove(connection);
         }

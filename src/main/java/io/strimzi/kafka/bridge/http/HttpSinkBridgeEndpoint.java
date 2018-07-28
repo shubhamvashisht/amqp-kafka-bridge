@@ -18,6 +18,7 @@ package io.strimzi.kafka.bridge.http;
 
 import io.strimzi.kafka.bridge.Endpoint;
 import io.strimzi.kafka.bridge.SinkBridgeEndpoint;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -31,6 +32,8 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
     private String consumerName;
 
+    private Handler<String> consumerIdHandler;
+
     HttpSinkBridgeEndpoint(Vertx vertx, HttpBridgeConfigProperties httpBridgeConfigProperties) {
         super(vertx, httpBridgeConfigProperties);
     }
@@ -43,73 +46,81 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
     @Override
     public void handle(Endpoint<?> endpoint) {
 
-    }
-
-    @Override
-    public void createConsumer(Endpoint<?> endpoint) {
         httpServerRequest = (HttpServerRequest) endpoint.get();
 
-        //set group id of consumer
-        groupId = PathParamsExtractor.getConsumerConsumerCreationParams(httpServerRequest).get("group-id");
+        RequestType requestType = RequestIdentifier.getRequestType(httpServerRequest);
 
-        httpServerRequest.bodyHandler(buffer -> {
+        switch (requestType){
 
-            if (buffer.toJsonObject().containsKey("name")) {
-                consumerName = buffer.toJsonObject().getString("name");
-            }
-            //in case name is not mentioned by the client explicitly, assign a random name.
-            else {
-                consumerName = "kafka-bridge-consumer-";
-                consumerName += UUID.randomUUID().toString();
-            }
+            case SUBSCRIBE:
 
-            //construct consumer instance id
-            consumerInstanceId = consumerName;
+                httpServerRequest.bodyHandler(buffer -> {
+                    this.topic = buffer.toJsonObject().getString("topic");
+                    this.partition = buffer.toJsonObject().getInteger("partition");
+                    if (buffer.toJsonObject().containsKey("offset")) {
+                        this.offset = Long.parseLong(buffer.toJsonObject().getString("offset"));
+                    }
+                    this.kafkaTopic = this.topic;
+                    this.setSubscribeHandler(subscribeResult -> {
+                        if (subscribeResult.succeeded()) {
+                            sendConsumerSubscriptionResponse(httpServerRequest.response());
+                        }
+                    });
+                    this.subscribe(false);
+                });
 
-            //construct base URI for consumer
-            String requestUri = httpServerRequest.absoluteURI();
-            if (!httpServerRequest.path().endsWith("/")){
-                requestUri += "/";
-            }
-            consumerBaseUri = requestUri+"instances/"+consumerInstanceId;
+                break;
 
-            //create the consumer
-            this.initConsumer();
+            case INVALID:
+                log.info("invalid request");
+        }
 
-            //send consumer instance id(name) and base URI as response
-            sendConsumerCreationResponse(httpServerRequest.response(), consumerInstanceId, consumerBaseUri);
-        });
     }
 
     @Override
-    public void subscribeToTopic(Endpoint<?> endpoint) {
+    public void handle(Endpoint<?> endpoint, Handler<String> handler) {
         httpServerRequest = (HttpServerRequest) endpoint.get();
 
-        httpServerRequest.bodyHandler(buffer -> {
+        RequestType requestType = RequestIdentifier.getRequestType(httpServerRequest);
 
-            this.topic = buffer.toJsonObject().getString("topic");
-            this.partition = buffer.toJsonObject().getInteger("partition");
+        switch (requestType){
 
-            if (buffer.toJsonObject().containsKey("offset")) {
-                this.offset = Long.parseLong(buffer.toJsonObject().getString("offset"));
-            }
+            case CREATE:
 
-            this.kafkaTopic = this.topic;
+                //set group id of consumer
+                groupId = PathParamsExtractor.getConsumerConsumerCreationParams(httpServerRequest).get("group-id");
+                httpServerRequest.bodyHandler(buffer -> {
+                    if (buffer.toJsonObject().containsKey("name")) {
+                        consumerName = buffer.toJsonObject().getString("name");
+                    }
+                    //in case name is not mentioned by the client explicitly, assign a random name.
+                    else {
+                        consumerName = "kafka-bridge-consumer-";
+                        consumerName += UUID.randomUUID().toString();
+                    }
+                    //construct consumer instance id
+                    consumerInstanceId = consumerName;
+                    //construct base URI for consumer
+                    String requestUri = httpServerRequest.absoluteURI();
+                    if (!httpServerRequest.path().endsWith("/")){
+                        requestUri += "/";
+                    }
+                    consumerBaseUri = requestUri+"instances/"+super.consumerInstanceId;
 
-            this.setSubscribeHandler(subscribeResult -> {
-                if (subscribeResult.succeeded()) {
-                    sendConsumerSubscriptionResponse(httpServerRequest.response());
-                }
-            });
+                    //create the consumer
+                    this.initConsumer(false);
 
-            this.justSubscribe();
+                    this.consumerIdHandler = handler;
+                    this.consumerIdHandler.handle(consumerInstanceId);
 
-        });
-    }
+                    //send consumer instance id(name) and base URI as response
+                    sendConsumerCreationResponse(httpServerRequest.response(), consumerInstanceId, consumerBaseUri);
+                });
+                break;
 
-    @Override
-    public void consume(Endpoint<?> endpoint) {
-
+            case INVALID:
+                log.info("invalid request");
+        }
     }
 
     private void sendConsumerCreationResponse(HttpServerResponse response, String instanceId, String uri) {
