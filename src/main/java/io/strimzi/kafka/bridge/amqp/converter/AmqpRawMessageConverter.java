@@ -19,6 +19,7 @@ package io.strimzi.kafka.bridge.amqp.converter;
 import io.strimzi.kafka.bridge.amqp.AmqpBridge;
 import io.strimzi.kafka.bridge.converter.MessageConverter;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import io.vertx.kafka.client.consumer.KafkaConsumerRecords;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.qpid.proton.Proton;
 import org.apache.qpid.proton.amqp.Symbol;
@@ -94,6 +95,11 @@ public class AmqpRawMessageConverter implements MessageConverter<String, byte[],
 		message.setMessageAnnotations(messageAnnotations);
 		
 		return message;
+	}
+
+	@Override
+	public Message toMessages(KafkaConsumerRecords<String, byte[]> records) {
+		return null;
 	}
 
 }

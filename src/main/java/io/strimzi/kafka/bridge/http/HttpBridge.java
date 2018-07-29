@@ -173,12 +173,20 @@ public class HttpBridge extends AbstractVerticle {
 
             case SUBSCRIBE:
 
-                String instanceId = PathParamsExtractor.getConsumerSubscriptionParams(httpServerRequest).get("instance-id");
+                String subscribeInstanceId = PathParamsExtractor.getConsumerSubscriptionParams(httpServerRequest).get("instance-id");
 
-                final SinkBridgeEndpoint subscribeSink = this.httpSinkEndpoints.get(instanceId);
+                final SinkBridgeEndpoint subscribeSink = this.httpSinkEndpoints.get(subscribeInstanceId);
 
                 subscribeSink.handle(new HttpEndpoint(httpServerRequest));
                 break;
+
+            case CONSUME:
+
+                String consumeInstanceId = PathParamsExtractor.getConsumerConsumptionParams(httpServerRequest).get("instance-id");
+
+                final SinkBridgeEndpoint consumeSink = this.httpSinkEndpoints.get(consumeInstanceId);
+
+                consumeSink.handle(new HttpEndpoint(httpServerRequest));
 
             case INVALID:
                 log.info("invalid request");

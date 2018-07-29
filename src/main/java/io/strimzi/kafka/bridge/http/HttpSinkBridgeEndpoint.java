@@ -18,8 +18,11 @@ package io.strimzi.kafka.bridge.http;
 
 import io.strimzi.kafka.bridge.Endpoint;
 import io.strimzi.kafka.bridge.SinkBridgeEndpoint;
+import io.strimzi.kafka.bridge.converter.MessageConverter;
+import io.strimzi.kafka.bridge.http.converter.HttpJsonMessageConverter;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
@@ -34,6 +37,8 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
     private Handler<String> consumerIdHandler;
 
+    private MessageConverter messageConverter;
+
     HttpSinkBridgeEndpoint(Vertx vertx, HttpBridgeConfigProperties httpBridgeConfigProperties) {
         super(vertx, httpBridgeConfigProperties);
     }
@@ -47,6 +52,8 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
     public void handle(Endpoint<?> endpoint) {
 
         httpServerRequest = (HttpServerRequest) endpoint.get();
+
+        messageConverter = new HttpJsonMessageConverter();
 
         RequestType requestType = RequestIdentifier.getRequestType(httpServerRequest);
 
@@ -68,6 +75,23 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                     });
                     this.subscribe(false);
                 });
+
+                break;
+
+            case CONSUME:
+
+                this.setManualRecordBatchHandler(result -> {
+
+                    Buffer buffer = (Buffer) messageConverter.toMessages(result);
+
+                    sendConsumerRecordsResponse(httpServerRequest.response(), buffer);
+                });
+
+                if (httpServerRequest.getHeader("timeout") != null) {
+                    this.pollTimeOut = Long.parseLong(httpServerRequest.getHeader("timeout"));
+                }
+
+                this.consume();
 
                 break;
 
@@ -142,4 +166,9 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
         response.end();
     }
 
+    private void sendConsumerRecordsResponse(HttpServerResponse response, Buffer buffer){
+        response.putHeader("Content-length", String.valueOf(buffer.length()));
+        response.write(buffer);
+        response.end();
+    }
 }

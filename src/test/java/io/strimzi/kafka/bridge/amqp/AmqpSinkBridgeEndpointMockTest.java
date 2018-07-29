@@ -16,29 +16,6 @@
 
 package io.strimzi.kafka.bridge.amqp;
 
-import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-
-import io.vertx.kafka.client.consumer.impl.KafkaConsumerRecordImpl;
-import io.vertx.kafka.client.producer.KafkaProducerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.qpid.proton.amqp.Symbol;
-import org.apache.qpid.proton.amqp.messaging.Data;
-import org.apache.qpid.proton.amqp.messaging.MessageAnnotations;
-import org.apache.qpid.proton.amqp.messaging.Source;
-import org.apache.qpid.proton.amqp.transport.ErrorCondition;
-import org.apache.qpid.proton.message.Message;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-
 import io.strimzi.kafka.bridge.converter.MessageConverter;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -49,9 +26,32 @@ import io.vertx.kafka.client.consumer.KafkaConsumer;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecords;
 import io.vertx.kafka.client.consumer.OffsetAndMetadata;
+import io.vertx.kafka.client.consumer.impl.KafkaConsumerRecordImpl;
+import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import io.vertx.proton.ProtonDelivery;
 import io.vertx.proton.ProtonQoS;
 import io.vertx.proton.ProtonSender;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.qpid.proton.amqp.Symbol;
+import org.apache.qpid.proton.amqp.messaging.Data;
+import org.apache.qpid.proton.amqp.messaging.MessageAnnotations;
+import org.apache.qpid.proton.amqp.messaging.Source;
+import org.apache.qpid.proton.amqp.transport.ErrorCondition;
+import org.apache.qpid.proton.message.Message;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+
+import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.*;
 
 public class AmqpSinkBridgeEndpointMockTest {
 	
@@ -468,6 +468,11 @@ public class AmqpSinkBridgeEndpointMockTest {
 		public M toMessage(String address, KafkaConsumerRecord<K, V> record) {
 			return null;
 		}
+
+		@Override
+		public M toMessages(KafkaConsumerRecords<K, V> records) {
+			return null;
+		}
 	}
 	
 	@Test
@@ -498,6 +503,11 @@ public class AmqpSinkBridgeEndpointMockTest {
 
 		@Override
 		public M toMessage(String address, KafkaConsumerRecord<K, V> record) {
+			return null;
+		}
+
+		@Override
+		public M toMessages(KafkaConsumerRecords<K, V> records) {
 			return null;
 		}
 	}

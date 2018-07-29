@@ -18,6 +18,7 @@ package io.strimzi.kafka.bridge.converter;
 
 
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import io.vertx.kafka.client.consumer.KafkaConsumerRecords;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 
 /**
@@ -42,4 +43,11 @@ public interface MessageConverter<K, V, M> {
 	 * @return	message
 	 */
 	M toMessage(String address, KafkaConsumerRecord<K, V> record);
+
+	/**
+	 * Converts multiple KafkaConsumerRecord from KafkaConsumerRecords to a message
+	 * @param records KafkaRecords to convert
+	 * @return message
+	 */
+	M toMessages(KafkaConsumerRecords<K, V> records);
 }

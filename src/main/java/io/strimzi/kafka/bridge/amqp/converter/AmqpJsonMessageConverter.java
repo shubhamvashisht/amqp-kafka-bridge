@@ -21,6 +21,7 @@ import io.strimzi.kafka.bridge.converter.MessageConverter;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import io.vertx.kafka.client.consumer.KafkaConsumerRecords;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.qpid.proton.Proton;
 import org.apache.qpid.proton.amqp.Binary;
@@ -291,5 +292,10 @@ public class AmqpJsonMessageConverter implements MessageConverter<String, byte[]
 		return message;
 	}
 
-	
+	@Override
+	public Message toMessages(KafkaConsumerRecords<String, byte[]> records) {
+		return null;
+	}
+
+
 }

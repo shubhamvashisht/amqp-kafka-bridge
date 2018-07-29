@@ -73,6 +73,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
 
     protected QoSEndpoint qos;
 
+    protected long pollTimeOut = 100;
+
     //unique id assigned to every consumer during its creation.
     protected String consumerInstanceId;
 
@@ -95,6 +97,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
     private Handler<KafkaConsumerRecord<K, V>> receivedHandler;
     // handler called after a commit request
     private Handler<AsyncResult<Void>> commitHandler;
+
+    private Handler<KafkaConsumerRecords<K, V>> manualRecordBatchHandler;
 
     /**
      * Constructor
@@ -489,6 +493,10 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         this.commitHandler = handler;
     }
 
+    protected void setManualRecordBatchHandler(Handler<KafkaConsumerRecords<K, V>> manualRecordBatchHandler){
+        this.manualRecordBatchHandler = manualRecordBatchHandler;
+    }
+
     private void handlePartitionsRevoked(Set<TopicPartition> partitions) {
         if (this.partitionsRevokedHandler != null) {
             this.partitionsRevokedHandler.handle(partitions);
@@ -535,5 +543,21 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         if (this.commitHandler != null) {
             this.commitHandler.handle(commitResult);
         }
+    }
+
+    private void handleManualRecords(KafkaConsumerRecords<K, V> record) {
+        if (this.manualRecordBatchHandler != null) {
+            this.manualRecordBatchHandler.handle(record);
+        }
+    }
+
+    protected void consume() {
+        this.consumer.poll(this.pollTimeOut, pollResult -> {
+            if (pollResult.succeeded()) {
+                if (pollResult.result().size() > 0) {
+                    this.handleManualRecords(pollResult.result());
+                }
+            }
+        });
     }
 }
