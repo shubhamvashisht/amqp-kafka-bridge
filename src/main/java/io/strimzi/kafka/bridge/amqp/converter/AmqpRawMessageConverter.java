@@ -27,6 +27,7 @@ import org.apache.qpid.proton.amqp.messaging.MessageAnnotations;
 import org.apache.qpid.proton.message.Message;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,7 +36,7 @@ import java.util.Map;
  * between Kafka record and AMQP message.
  * It passes the AMQP message as is (raw bytes) as Kafka record value and vice versa.
  */
-public class AmqpRawMessageConverter implements MessageConverter<String, byte[], Message> {
+public class AmqpRawMessageConverter implements MessageConverter<String, byte[], Message, Collection<Message>> {
 
 	// TODO : should be it configurable or based on max frame size ?
 	private static final int BUFFER_SIZE = 32768;
@@ -98,7 +99,7 @@ public class AmqpRawMessageConverter implements MessageConverter<String, byte[],
 	}
 
 	@Override
-	public Message toMessages(KafkaConsumerRecords<String, byte[]> records) {
+	public Collection<Message> toMessages(KafkaConsumerRecords<String, byte[]> records) {
 		return null;
 	}
 

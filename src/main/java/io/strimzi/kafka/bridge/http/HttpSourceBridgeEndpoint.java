@@ -69,7 +69,7 @@ public class HttpSourceBridgeEndpoint extends SourceBridgeEndpoint {
     }
 
     @Override
-    public void handle(Endpoint<?> endpoint, Handler<String> handler) {
+    public void handle(Endpoint<?> endpoint, Handler<?> handler) {
 
     }
 

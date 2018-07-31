@@ -454,7 +454,7 @@ public class AmqpSinkBridgeEndpointMockTest {
 				"configured message converter class is not an instanceof io.strimzi.kafka.bridge.converter.MessageConverter: java.util.HashSet");
 	}
 	
-	static class NoNullaryCtor<K, V, M> implements MessageConverter<K, V, M>{
+	static class NoNullaryCtor<K, V, M, C> implements MessageConverter<K, V, M, C>{
 		private NoNullaryCtor() {
 			throw new RuntimeException();
 		}
@@ -470,7 +470,7 @@ public class AmqpSinkBridgeEndpointMockTest {
 		}
 
 		@Override
-		public M toMessages(KafkaConsumerRecords<K, V> records) {
+		public C toMessages(KafkaConsumerRecords<K, V> records) {
 			return null;
 		}
 	}
@@ -491,7 +491,7 @@ public class AmqpSinkBridgeEndpointMockTest {
 				"configured message converter class could not be instantiated: io.strimzi.kafka.bridge.amqp.AmqpSinkBridgeEndpointMockTest$NoNullaryCtor");
 	}
 	
-	static class CtorThrows<K, V, M> implements MessageConverter<K, V, M>{
+	static class CtorThrows<K, V, M, C> implements MessageConverter<K, V, M, C>{
 		public CtorThrows() {
 			throw new RuntimeException();
 		}
@@ -506,11 +506,12 @@ public class AmqpSinkBridgeEndpointMockTest {
 			return null;
 		}
 
-		@Override
-		public M toMessages(KafkaConsumerRecords<K, V> records) {
-			return null;
-		}
-	}
+        @Override
+        public C toMessages(KafkaConsumerRecords<K, V> records) {
+            return null;
+        }
+
+    }
 	
 	@Test
 	public <K, V> void config_ConverterDefaultConstructorThrows() throws AmqpErrorConditionException {

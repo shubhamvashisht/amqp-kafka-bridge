@@ -45,7 +45,7 @@ public interface BridgeEndpoint {
      * @param endpoint	Remote protocol endpoint to handle
      * @param handler handler for result
      */
-	void handle(Endpoint<?> endpoint, Handler<String> handler);
+	void handle(Endpoint<?> endpoint, Handler<?> handler);
 	
 	/**
 	 * Sets an handler called when a bridge endpoint is closed due to internal processing

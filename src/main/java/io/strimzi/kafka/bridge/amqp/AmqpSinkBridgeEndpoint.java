@@ -36,6 +36,7 @@ import org.apache.qpid.proton.amqp.messaging.Source;
 import org.apache.qpid.proton.amqp.transport.ErrorCondition;
 import org.apache.qpid.proton.message.Message;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -51,7 +52,7 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 	private static final String GROUP_ID_MATCH = "/group.id/";
 	
 	// converter from ConsumerRecord to AMQP message
-	private MessageConverter<K, V, Message> converter;
+	private MessageConverter<K, V, Message, Collection<Message>> converter;
 
 	// sender link for handling outgoing message
 	private ProtonSender sender;
@@ -99,7 +100,7 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 		try {
 			
 			if (this.converter == null) {
-				this.converter = (MessageConverter<K, V, Message>) AmqpBridge.instantiateConverter(amqpConfigProperties.getMessageConverter());
+				this.converter = (MessageConverter<K, V, Message, Collection<Message>>) AmqpBridge.instantiateConverter(amqpConfigProperties.getMessageConverter());
 			}
 			
 			this.sender = (ProtonSender)link;
@@ -189,7 +190,7 @@ public class AmqpSinkBridgeEndpoint<K, V> extends SinkBridgeEndpoint<K, V> {
 	}
 
 	@Override
-	public void handle(Endpoint<?> endpoint, Handler<String> handler) {
+	public void handle(Endpoint<?> endpoint, Handler<?> handler) {
 
 	}
 

@@ -75,11 +75,6 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
 
     protected long pollTimeOut = 100;
 
-    //unique id assigned to every consumer during its creation.
-    protected String consumerInstanceId;
-
-    protected String consumerBaseUri;
-
     private boolean shouldAttachSubscriberHandler;
 
     // handlers called when partitions are revoked/assigned on rebalancing
@@ -151,7 +146,7 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         this.consumer = KafkaConsumer.create(this.vertx, props);
 
         if (shouldAttachBatchHandler)
-        this.consumer.batchHandler(this::handleKafkaBatch);
+            this.consumer.batchHandler(this::handleKafkaBatch);
     }
 
     /**
@@ -278,7 +273,7 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
             }
 
             if (shouldAttachSubscriberHandler)
-            this.consumer.handler(this::handleKafkaRecord);
+                this.consumer.handler(this::handleKafkaRecord);
         });
     }
 
@@ -290,7 +285,7 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         this.handlePartitionsAssigned(partitions);
 
         if (shouldAttachSubscriberHandler)
-        this.consumer.handler(this::handleKafkaRecord);
+            this.consumer.handler(this::handleKafkaRecord);
     }
 
     /**
@@ -493,10 +488,6 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         this.commitHandler = handler;
     }
 
-    protected void setManualRecordBatchHandler(Handler<KafkaConsumerRecords<K, V>> manualRecordBatchHandler){
-        this.manualRecordBatchHandler = manualRecordBatchHandler;
-    }
-
     private void handlePartitionsRevoked(Set<TopicPartition> partitions) {
         if (this.partitionsRevokedHandler != null) {
             this.partitionsRevokedHandler.handle(partitions);
@@ -551,11 +542,16 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         }
     }
 
-    protected void consume() {
+    protected void consume(Handler<KafkaConsumerRecords<K, V>> manualRecordBatchHandler) {
+        this.manualRecordBatchHandler = manualRecordBatchHandler;
+
         this.consumer.poll(this.pollTimeOut, pollResult -> {
             if (pollResult.succeeded()) {
                 if (pollResult.result().size() > 0) {
-                    this.handleManualRecords(pollResult.result());
+
+                    if (this.manualRecordBatchHandler != null){
+                        this.handleManualRecords(pollResult.result());
+                    }
                 }
             }
         });

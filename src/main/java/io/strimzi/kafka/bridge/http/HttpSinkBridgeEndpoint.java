@@ -35,7 +35,12 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
     private String consumerName;
 
-    private Handler<String> consumerIdHandler;
+    //unique id assigned to every consumer during its creation.
+    private String consumerInstanceId;
+
+    private String consumerBaseUri;
+
+    private Handler consumerIdHandler;
 
     private MessageConverter messageConverter;
 
@@ -80,18 +85,14 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
             case CONSUME:
 
-                this.setManualRecordBatchHandler(result -> {
-
-                    Buffer buffer = (Buffer) messageConverter.toMessages(result);
-
-                    sendConsumerRecordsResponse(httpServerRequest.response(), buffer);
-                });
-
                 if (httpServerRequest.getHeader("timeout") != null) {
                     this.pollTimeOut = Long.parseLong(httpServerRequest.getHeader("timeout"));
                 }
 
-                this.consume();
+                this.consume(records -> {
+                    Buffer buffer = (Buffer) messageConverter.toMessages(records);
+                    sendConsumerRecordsResponse(httpServerRequest.response(), buffer);
+                });
 
                 break;
 
@@ -102,7 +103,7 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
     }
 
     @Override
-    public void handle(Endpoint<?> endpoint, Handler<String> handler) {
+    public void handle(Endpoint<?> endpoint, Handler<?> handler) {
         httpServerRequest = (HttpServerRequest) endpoint.get();
 
         RequestType requestType = RequestIdentifier.getRequestType(httpServerRequest);
@@ -129,7 +130,7 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                     if (!httpServerRequest.path().endsWith("/")){
                         requestUri += "/";
                     }
-                    consumerBaseUri = requestUri+"instances/"+super.consumerInstanceId;
+                    consumerBaseUri = requestUri+"instances/"+consumerInstanceId;
 
                     //create the consumer
                     this.initConsumer(false);

@@ -31,6 +31,7 @@ import org.apache.qpid.proton.amqp.messaging.MessageAnnotations;
 import org.apache.qpid.proton.amqp.messaging.Section;
 import org.apache.qpid.proton.message.Message;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ import java.util.Map;
  * Default implementation class for the message conversion
  * between Kafka record and AMQP message
  */
-public class AmqpDefaultMessageConverter implements MessageConverter<String, byte[], Message> {
+public class AmqpDefaultMessageConverter implements MessageConverter<String, byte[], Message, Collection<Message>> {
 
 	@Override
 	public KafkaProducerRecord<String, byte[]> toKafkaRecord(String kafkaTopic, Message message) {
@@ -132,7 +133,7 @@ public class AmqpDefaultMessageConverter implements MessageConverter<String, byt
 	}
 
 	@Override
-	public Message toMessages(KafkaConsumerRecords<String, byte[]> records) {
+	public Collection<Message> toMessages(KafkaConsumerRecords<String, byte[]> records) {
 		return null;
 	}
 

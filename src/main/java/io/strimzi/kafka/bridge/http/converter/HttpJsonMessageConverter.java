@@ -24,7 +24,7 @@ import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecords;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 
-public class HttpJsonMessageConverter implements MessageConverter<String,byte[],Buffer> {
+public class HttpJsonMessageConverter implements MessageConverter<String,byte[],Buffer, Buffer> {
 
     @Override
     public KafkaProducerRecord<String, byte[]> toKafkaRecord(String kafkaTopic, Buffer message) {

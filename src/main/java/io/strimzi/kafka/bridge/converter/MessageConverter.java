@@ -24,7 +24,7 @@ import io.vertx.kafka.client.producer.KafkaProducerRecord;
 /**
  * Interface for a message converter between Kafka record and AMQP message
  */
-public interface MessageConverter<K, V, M> {
+public interface MessageConverter<K, V, M, C> {
 
 	/**
 	 * Converts a message to a Kafka record
@@ -49,5 +49,5 @@ public interface MessageConverter<K, V, M> {
 	 * @param records KafkaRecords to convert
 	 * @return message
 	 */
-	M toMessages(KafkaConsumerRecords<K, V> records);
+	C toMessages(KafkaConsumerRecords<K, V> records);
 }
