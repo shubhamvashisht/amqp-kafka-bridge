@@ -173,7 +173,26 @@ public class HttpBridge extends AbstractVerticle {
 
                 final SinkBridgeEndpoint sinkEndpoint = this.httpSinkEndpoints.get(instanceId);
 
-                sinkEndpoint.handle(new HttpEndpoint(httpServerRequest));
+                if (sinkEndpoint != null) {
+                    sinkEndpoint.handle(new HttpEndpoint(httpServerRequest));
+                } else {
+                    throw new RuntimeException("no conusmer instance found with this id");
+                }
+                break;
+
+            case DELETE:
+                String deleteInstanceID = PathParamsExtractor.getConsumerDeletionParams(httpServerRequest).get("instance-id");
+
+                final SinkBridgeEndpoint deleteSinkEndpoint = this.httpSinkEndpoints.get(deleteInstanceID);
+
+                if (deleteSinkEndpoint != null) {
+
+                    deleteSinkEndpoint.handle(new HttpEndpoint(httpServerRequest));
+
+                    this.httpSinkEndpoints.remove(deleteInstanceID);
+                } else {
+                    throw new NullPointerException("no conusmer instance found with this id");
+                }
                 break;
 
             case INVALID:

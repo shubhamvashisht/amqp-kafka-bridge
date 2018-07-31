@@ -95,6 +95,10 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                 });
 
                 break;
+            case DELETE:
+
+                sendConsumerDeletionResponse(httpServerRequest.response());
+                break;
 
             case INVALID:
                 log.info("invalid request");
@@ -113,7 +117,7 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
             case CREATE:
 
                 //set group id of consumer
-                groupId = PathParamsExtractor.getConsumerConsumerCreationParams(httpServerRequest).get("group-id");
+                groupId = PathParamsExtractor.getConsumerCreationParams(httpServerRequest).get("group-id");
                 httpServerRequest.bodyHandler(buffer -> {
                     if (buffer.toJsonObject().containsKey("name")) {
                         consumerName = buffer.toJsonObject().getString("name");
@@ -170,6 +174,16 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
     private void sendConsumerRecordsResponse(HttpServerResponse response, Buffer buffer){
         response.putHeader("Content-length", String.valueOf(buffer.length()));
         response.write(buffer);
+        response.end();
+    }
+
+    private void sendConsumerDeletionResponse(HttpServerResponse response){
+        JsonObject jsonResponse = new JsonObject();
+        jsonResponse.put("instance_id", this.consumerInstanceId);
+        jsonResponse.put("status", "deleted");
+
+        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
+        response.write(jsonResponse.toBuffer());
         response.end();
     }
 }

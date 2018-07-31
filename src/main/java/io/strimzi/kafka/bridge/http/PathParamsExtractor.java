@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class PathParamsExtractor {
 
-    static Map<String, String> getConsumerConsumerCreationParams(HttpServerRequest request) {
+    static Map<String, String> getConsumerCreationParams(HttpServerRequest request) {
 
         String[] params = request.path().substring(1).split("/");
 
@@ -28,7 +28,7 @@ public class PathParamsExtractor {
         return map;
     }
 
-    static Map<String, String> getConsumerConsumptionParams(HttpServerRequest request) {
+    static Map<String, String > getConsumerDeletionParams(HttpServerRequest request){
 
         String[] params = request.path().substring(1).split("/");
 
@@ -37,6 +37,7 @@ public class PathParamsExtractor {
         map.put("group-id",params[1]);
 
         return map;
+
     }
 
 }
