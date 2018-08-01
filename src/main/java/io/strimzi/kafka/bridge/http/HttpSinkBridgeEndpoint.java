@@ -75,7 +75,7 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                     this.topic = buffer.toJsonObject().getString("topic");
                     this.partition = buffer.toJsonObject().getInteger("partition");
                     if (buffer.toJsonObject().containsKey("offset")) {
-                        this.offset = Long.parseLong(buffer.toJsonObject().getString("offset"));
+                        this.offset = buffer.toJsonObject().getLong("offset");
                     }
                     this.kafkaTopic = this.topic;
 

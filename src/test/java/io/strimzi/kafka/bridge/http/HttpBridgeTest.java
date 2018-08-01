@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(VertxUnitRunner.class)
 public class HttpBridgeTest extends KafkaClusterTestBase {
@@ -462,6 +463,88 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
                 .putHeader("timeout", String.valueOf(1000))
                 .end();
 
+        consumeAsync.await();
+    }
+
+    @Test
+    public void receiveSimpleMessageFromPartitionAndOffset(TestContext context) {
+        String topic = "receiveSimpleMessageFromPartitionAndOffset";
+        kafkaCluster.createTopic(topic, 1, 1);
+
+        Async batch = context.async();
+        AtomicInteger index = new AtomicInteger();
+        kafkaCluster.useTo().produceStrings(11, batch::complete,  () ->
+                new ProducerRecord<>(topic, 0, "key-" + index.get(), "value-" + index.getAndIncrement()));
+        batch.awaitSuccess(10000);
+
+
+        Async creationAsync = context.async();
+
+        HttpClient client = vertx.createHttpClient();
+
+        String name = "kafkaconsumer123";
+
+        String baseUri = "http://0.0.0.0:8080/consumers/group1/instances/"+name;
+
+        JsonObject json = new JsonObject();
+
+        json.put("name", name);
+
+        //create a consumer
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/consumers/group1/", response -> {
+            response.bodyHandler(buffer -> {
+                String consumerInstanceId = buffer.toJsonObject().getString("instance_id");
+                String consumerBaseUri = buffer.toJsonObject().getString("base_uri");
+                context.assertEquals(consumerInstanceId, name);
+                context.assertEquals(consumerBaseUri, baseUri);
+                creationAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
+
+        creationAsync.await();
+
+        //subscribe to a topic
+        Async subscriberAsync = context.async();
+
+        JsonObject subJson = new JsonObject();
+        subJson.put("topic", topic);
+        subJson.put("partition", 0);
+        subJson.put("offset", 10L);
+
+        client.post(BRIDGE_PORT, BRIDGE_HOST, baseUri+"/subscription", response -> {
+            response.bodyHandler(buffer -> {
+                String status = buffer.toJsonObject().getString("subscription_status");
+                context.assertEquals(status, "subscribed");
+                subscriberAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length())).write(subJson.toBuffer()).end();
+
+        subscriberAsync.await();
+
+        //consume records
+        Async consumeAsync = context.async();
+
+        client.get(BRIDGE_PORT, BRIDGE_HOST, baseUri+"/records", response -> {
+            response.bodyHandler(buffer -> {
+                JsonObject jsonResponse = buffer.toJsonArray().getJsonObject(0);
+
+                String kafkaTopic = jsonResponse.getString("topic");
+                int kafkaPartition = jsonResponse.getInteger("partition");
+                String key = jsonResponse.getString("key");
+                String value = jsonResponse.getString("value");
+                long offset = jsonResponse.getLong("offset");
+
+                context.assertEquals("key-10", key);
+                context.assertEquals(topic, kafkaTopic);
+                context.assertEquals("value-10", value);
+                context.assertEquals(kafkaPartition, 0);
+                context.assertEquals(10L, offset);
+
+                consumeAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length()))
+                .putHeader("timeout", String.valueOf(1000))
+                .end();
         consumeAsync.await();
     }
 }
