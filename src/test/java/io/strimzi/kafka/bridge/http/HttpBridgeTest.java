@@ -27,6 +27,7 @@ import io.vertx.kafka.client.consumer.KafkaConsumer;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.After;
 import org.junit.Before;
@@ -302,5 +303,165 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
         });
 
         consumer.handler(record -> {});
+    }
+
+    @Test
+    public void receiveSimpleMessage(TestContext context) {
+        String topic = "receiveSimpleMessage";
+        kafkaCluster.createTopic(topic, 1, 1);
+
+        String sentBody = "Simple message";
+
+        Async send = context.async();
+        kafkaCluster.useTo().produceStrings(1, send::complete, () ->
+                new ProducerRecord<>(topic, 0, null, sentBody));
+        send.await();
+
+        Async creationAsync = context.async();
+
+        HttpClient client = vertx.createHttpClient();
+
+        String name = "kafkaconsumer123";
+
+        String baseUri = "http://0.0.0.0:8080/consumers/group1/instances/"+name;
+
+        JsonObject json = new JsonObject();
+
+        json.put("name", name);
+
+        //create a consumer
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/consumers/group1/", response -> {
+           response.bodyHandler(buffer -> {
+               String consumerInstanceId = buffer.toJsonObject().getString("instance_id");
+               String consumerBaseUri = buffer.toJsonObject().getString("base_uri");
+               context.assertEquals(consumerInstanceId, name);
+               context.assertEquals(consumerBaseUri, baseUri);
+               creationAsync.complete();
+           });
+        }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
+
+        creationAsync.await();
+
+        //subscribe to a topic
+        Async subscriberAsync = context.async();
+
+        JsonObject subJson = new JsonObject();
+        subJson.put("topic", topic);
+        client.post(BRIDGE_PORT, BRIDGE_HOST, baseUri+"/subscription", response -> {
+            response.bodyHandler(buffer -> {
+                String status = buffer.toJsonObject().getString("subscription_status");
+                context.assertEquals(status, "subscribed");
+                subscriberAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length())).write(subJson.toBuffer()).end();
+
+        subscriberAsync.await();
+
+        //consume records
+        Async consumeAsync = context.async();
+
+        client.get(BRIDGE_PORT, BRIDGE_HOST, baseUri+"/records", response -> {
+            response.bodyHandler(buffer -> {
+                JsonObject jsonResponse = buffer.toJsonArray().getJsonObject(0);
+
+                String kafkaTopic = jsonResponse.getString("topic");
+                int kafkaPartition = jsonResponse.getInteger("partition");
+                String key = jsonResponse.getString("key");
+                String value = jsonResponse.getString("value");
+                long offset = jsonResponse.getLong("offset");
+
+                context.assertEquals(topic, kafkaTopic);
+                context.assertEquals(sentBody, value);
+                context.assertEquals(0L, offset);
+
+                consumeAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length()))
+                .putHeader("timeout", String.valueOf(1000))
+                .end();
+
+        consumeAsync.await();
+    }
+
+    @Test
+    public void receiveSimpleMessageFromPartition(TestContext context) {
+        String topic = "receiveSimpleMessageFromPartition";
+        int partition = 1;
+        kafkaCluster.createTopic(topic, 2, 1);
+
+        String sentBody = "Simple message from partition";
+
+        Async send = context.async();
+        kafkaCluster.useTo().produceStrings(1, send::complete, () ->
+                new ProducerRecord<>(topic, 1, null, sentBody));
+        send.await();
+
+        Async creationAsync = context.async();
+
+        HttpClient client = vertx.createHttpClient();
+
+        String name = "kafkaconsumer123";
+
+        String baseUri = "http://0.0.0.0:8080/consumers/group1/instances/"+name;
+
+        JsonObject json = new JsonObject();
+
+        json.put("name", name);
+
+        //create a consumer
+        client.post(BRIDGE_PORT, BRIDGE_HOST, "/consumers/group1/", response -> {
+            response.bodyHandler(buffer -> {
+                String consumerInstanceId = buffer.toJsonObject().getString("instance_id");
+                String consumerBaseUri = buffer.toJsonObject().getString("base_uri");
+                context.assertEquals(consumerInstanceId, name);
+                context.assertEquals(consumerBaseUri, baseUri);
+                creationAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(json.toBuffer().length())).write(json.toBuffer()).end();
+
+        creationAsync.await();
+
+        //subscribe to a topic
+        Async subscriberAsync = context.async();
+
+        JsonObject subJson = new JsonObject();
+        subJson.put("topic", topic);
+        subJson.put("partition",partition);
+
+        client.post(BRIDGE_PORT, BRIDGE_HOST, baseUri+"/subscription", response -> {
+            response.bodyHandler(buffer -> {
+                String status = buffer.toJsonObject().getString("subscription_status");
+                context.assertEquals(status, "subscribed");
+                subscriberAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length())).write(subJson.toBuffer()).end();
+
+        subscriberAsync.await();
+
+        //consume records
+        Async consumeAsync = context.async();
+
+        client.get(BRIDGE_PORT, BRIDGE_HOST, baseUri+"/records", response -> {
+            response.bodyHandler(buffer -> {
+                JsonObject jsonResponse = buffer.toJsonArray().getJsonObject(0);
+
+                String kafkaTopic = jsonResponse.getString("topic");
+                int kafkaPartition = jsonResponse.getInteger("partition");
+                String key = jsonResponse.getString("key");
+                String value = jsonResponse.getString("value");
+                long offset = jsonResponse.getLong("offset");
+
+                context.assertEquals(topic, kafkaTopic);
+                context.assertEquals(sentBody, value);
+                context.assertEquals(kafkaPartition, partition);
+                context.assertEquals(0L, offset);
+
+                consumeAsync.complete();
+            });
+        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length()))
+                .putHeader("timeout", String.valueOf(1000))
+                .end();
+
+        consumeAsync.await();
     }
 }

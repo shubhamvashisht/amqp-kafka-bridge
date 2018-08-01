@@ -78,11 +78,19 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                         this.offset = Long.parseLong(buffer.toJsonObject().getString("offset"));
                     }
                     this.kafkaTopic = this.topic;
+
                     this.setSubscribeHandler(subscribeResult -> {
                         if (subscribeResult.succeeded()) {
                             sendConsumerSubscriptionResponse(httpServerRequest.response());
                         }
                     });
+
+                    this.setAssignHandler(assignResult -> {
+                        if (assignResult.succeeded()) {
+                            sendConsumerSubscriptionResponse(httpServerRequest.response());
+                        }
+                    });
+
                     this.subscribe(false);
                 });
 
