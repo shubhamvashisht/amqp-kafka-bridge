@@ -133,7 +133,12 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                     }
 
                     this.commit(offsetData, status -> {
-                        sendConsumerCommitOffsetResponse(httpServerRequest.response());
+                        if (status.succeeded()){
+                            sendConsumerCommitOffsetResponse(httpServerRequest.response(), true);
+                        } else {
+                            sendConsumerCommitOffsetResponse(httpServerRequest.response(), false);
+                        }
+
                     });
 
                 });
@@ -227,9 +232,13 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
         response.end();
     }
 
-    private void sendConsumerCommitOffsetResponse(HttpServerResponse response){
+    private void sendConsumerCommitOffsetResponse(HttpServerResponse response, boolean result){
         String emptyResponse = "";
-        response.setStatusCode(200);
+        if (result){
+            response.setStatusCode(200);
+        } else {
+            response.setStatusCode(500);
+        }
         response.putHeader("Content-length", String.valueOf(emptyResponse.length()));
         response.write(emptyResponse);
         response.end();
