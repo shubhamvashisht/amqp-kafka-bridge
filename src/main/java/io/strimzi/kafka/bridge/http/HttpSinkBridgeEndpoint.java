@@ -25,8 +25,13 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.kafka.client.common.TopicPartition;
+import io.vertx.kafka.client.consumer.OffsetAndMetadata;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
@@ -98,6 +103,33 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
             case DELETE:
 
                 sendConsumerDeletionResponse(httpServerRequest.response());
+                break;
+
+            case OFFSETS:
+
+                httpServerRequest.bodyHandler(buffer -> {
+
+                    Map<TopicPartition, OffsetAndMetadata> offsetData = new HashMap<>();
+
+                    JsonObject jsonOffsetData = buffer.toJsonObject();
+
+                    JsonArray offsetsList = jsonOffsetData.getJsonArray("offsets");
+
+                    for (int i = 0 ; i < offsetsList.size() ; i++) {
+
+                        TopicPartition topicPartition = new TopicPartition(offsetsList.getJsonObject(i));
+
+                        OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(offsetsList.getJsonObject(i));
+
+                        offsetData.put(topicPartition, offsetAndMetadata);
+                    }
+
+                    this.commit(offsetData, status -> {
+                        sendConsumerCommitOffsetResponse(httpServerRequest.response());
+                    });
+
+                });
+
                 break;
 
             case INVALID:
@@ -184,6 +216,14 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
 
         response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
         response.write(jsonResponse.toBuffer());
+        response.end();
+    }
+
+    private void sendConsumerCommitOffsetResponse(HttpServerResponse response){
+        String emptyResponse = "";
+        response.setStatusCode(200);
+        response.putHeader("Content-length", String.valueOf(emptyResponse.length()));
+        response.write(emptyResponse);
         response.end();
     }
 }

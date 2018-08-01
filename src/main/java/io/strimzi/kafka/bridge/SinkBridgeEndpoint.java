@@ -95,6 +95,8 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
 
     private Handler<KafkaConsumerRecords<K, V>> manualRecordBatchHandler;
 
+    private Handler<Map<TopicPartition, io.vertx.kafka.client.consumer.OffsetAndMetadata>> commitOffsetsHandler;
+
     /**
      * Constructor
      *
@@ -542,6 +544,12 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
         }
     }
 
+    private void handleCommitedOffsets(Map<TopicPartition, io.vertx.kafka.client.consumer.OffsetAndMetadata> offsetsData) {
+        if (this.commitOffsetsHandler != null) {
+            this.commitOffsetsHandler.handle(offsetsData);
+        }
+    }
+
     protected void consume(Handler<KafkaConsumerRecords<K, V>> manualRecordBatchHandler) {
         this.manualRecordBatchHandler = manualRecordBatchHandler;
 
@@ -553,6 +561,16 @@ public abstract class SinkBridgeEndpoint<K, V> implements BridgeEndpoint {
                         this.handleManualRecords(pollResult.result());
                     }
                 }
+            }
+        });
+    }
+
+    protected void commit(Map<TopicPartition, io.vertx.kafka.client.consumer.OffsetAndMetadata> offsetsData, Handler<Map<TopicPartition, io.vertx.kafka.client.consumer.OffsetAndMetadata>> commitOffsetsHandler){
+        this.commitOffsetsHandler = commitOffsetsHandler;
+
+        this.consumer.commit(offsetsData, result -> {
+            if (result.succeeded() && this.commitOffsetsHandler != null) {
+                this.handleCommitedOffsets(result.result());
             }
         });
     }

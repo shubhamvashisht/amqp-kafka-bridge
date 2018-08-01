@@ -169,6 +169,7 @@ public class HttpBridge extends AbstractVerticle {
 
             case SUBSCRIBE:
             case CONSUME:
+            case OFFSETS:
                 String instanceId = PathParamsExtractor.getConsumerSubscriptionParams(httpServerRequest).get("instance-id");
 
                 final SinkBridgeEndpoint sinkEndpoint = this.httpSinkEndpoints.get(instanceId);
