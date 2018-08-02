@@ -133,12 +133,7 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                     }
 
                     this.commit(offsetData, status -> {
-                        if (status.succeeded()){
-                            sendConsumerCommitOffsetResponse(httpServerRequest.response(), true);
-                        } else {
-                            sendConsumerCommitOffsetResponse(httpServerRequest.response(), false);
-                        }
-
+                        sendConsumerCommitOffsetResponse(httpServerRequest.response(), status.succeeded());
                     });
 
                 });
