@@ -47,7 +47,7 @@ public interface MessageConverter<K, V, M, C> {
 	/**
 	 * Converts multiple KafkaConsumerRecord from KafkaConsumerRecords to a message
 	 * @param records KafkaRecords to convert
-	 * @return message
+	 * @return a list of messages
 	 */
 	C toMessages(KafkaConsumerRecords<K, V> records);
 }
