@@ -2,8 +2,8 @@
 #### Consumer API provides allows you to create a consumer in a consumer group and consume messages from topics and partitions. For each type of request only `JSON` format is supported.
 
 * ### Creating a consumer
-    * #### Create a new consumer instance in the consumer group. Optionally specifying name of     consumer instance. If name is not specified a random name will be assgined.
-        ##### Endpoint : `http://hostip:port/consumers/{group-id}`
+    * #### Create a new consumer instance in the consumer group. Optionally specifying name of consumer instance. If name is not specified a random name will be assigned.
+        ##### Endpoint : `http://BRIDGE_HOST:BRIDGE_PORT/consumers/{group-id}`
         ##### Request method : `POST`
         ##### Path params : `group-id`
         ##### Request body params : `name [optional]`
@@ -22,12 +22,12 @@
         ```
         HTTP/1.1 200 OK
         Content-Type: application/json
-        {"instance_id":"kafkaconsumer123","base_ur":"http://hostip:port/consumers/group-1/instances/kafkaconsumer123}
+        {"instance_id":"kafkaconsumer123","base_ur":"http://BRIDGE_HOST:BRIDGE_PORT/consumers/group-1/instances/kafkaconsumer123}
         ```
         
 * ### Subscribing to a topic
     * #### subscribe to a topic. Optionally specifying `partition` and `offset`. If a partition is not specified explicitly one will be assigned automatically by the bridge. If an offset is specified explicitly the consumer will `seek()` to that offset.
-        ##### Endpoint : `http://hostip:port/consumers/{group-id}/instances/{instance_id}/subscription`
+        ##### Endpoint : `http://BRIDGE_HOST:BRIDGE_PORT/consumers/{group-id}/instances/{instance_id}/subscription`
         ##### Request method : `POST`
         ##### Path params : `group-id`, `instance_id`
         ##### Request body params : `topic`, `partition [optional]`, `offset [optional]`
@@ -51,7 +51,7 @@
         
 * ### Consuming records
     * #### consuming records from the kafka. The consumer should be subscribe to a topic to consume any records. `timeout` can be explicitly specified in the request header.
-        ##### Endpoint : `http://hostip:port/consumers/{group-id}/instances/{instance_id}/records`
+        ##### Endpoint : `http://BRIDGE_HOST:BRIDGE_PORT/consumers/{group-id}/instances/{instance_id}/records`
         ##### Request method : `GET`
         ##### Path params : `group-id`, `instance_id`
         ##### Request header : `timeout`
@@ -75,7 +75,7 @@
 
 * ### Deleting a consumer instance
     * #### Delete a consumer instance.
-        ##### Endpoint : `http://hostip:port/consumers/{group-id}/instances/{instance_id}`
+        ##### Endpoint : `http://BRIDGE_HOST:BRIDGE_PORT/consumers/{group-id}/instances/{instance_id}`
         ##### Request method : `DELETE`
         ##### Path params : `group-id`, `instance_id`
 
@@ -97,7 +97,7 @@
         
 * ### Commiting offsets
     * #### commit a list of offsets. specifying `topic`, `partition`, `offset` is compulsory for each record to be commit.
-        ##### Endpoint : `http://hostip:port/consumers/{group-id}/instances/{instance_id}/offsets`
+        ##### Endpoint : `http://BRIDGE_HOST:BRIDGE_PORT/consumers/{group-id}/instances/{instance_id}/offsets`
         ##### Request method : `POST`
         ##### Path params : `group-id`, `instance_id`
         ##### Request body params : `offsets`, `offsets[i]`, `offsets[i].topic`, `offsets[i].partition`, `offsets[i].offset`
