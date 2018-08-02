@@ -324,7 +324,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         String name = "kafkaconsumer123";
 
-        String baseUri = "http://0.0.0.0:8080/consumers/group1/instances/"+name;
+        String baseUri = "http://"+BRIDGE_HOST+":"+BRIDGE_PORT+"/consumers/group1/instances/"+name;
 
         JsonObject json = new JsonObject();
 
@@ -403,7 +403,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         String name = "kafkaconsumer123";
 
-        String baseUri = "http://0.0.0.0:8080/consumers/group1/instances/"+name;
+        String baseUri = "http://"+BRIDGE_HOST+":"+BRIDGE_PORT+"/consumers/group1/instances/"+name;
 
         JsonObject json = new JsonObject();
 
@@ -484,7 +484,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
         String name = "kafkaconsumer123";
 
-        String baseUri = "http://0.0.0.0:8080/consumers/group1/instances/"+name;
+        String baseUri = "http://"+BRIDGE_HOST+":"+BRIDGE_PORT+"/consumers/group1/instances/"+name;
 
         JsonObject json = new JsonObject();
 
