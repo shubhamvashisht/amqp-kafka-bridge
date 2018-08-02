@@ -187,12 +187,15 @@ public class HttpBridge extends AbstractVerticle {
                 final SinkBridgeEndpoint deleteSinkEndpoint = this.httpSinkEndpoints.get(deleteInstanceID);
 
                 if (deleteSinkEndpoint != null) {
-
                     deleteSinkEndpoint.handle(new HttpEndpoint(httpServerRequest));
 
                     this.httpSinkEndpoints.remove(deleteInstanceID);
                 } else {
-                    throw new NullPointerException("no conusmer instance found with this id");
+                    httpServerRequest.response()
+                            .setStatusCode(404)
+                            .putHeader("Content-length", String.valueOf("".length()))
+                            .write("")
+                            .end();
                 }
                 break;
 
