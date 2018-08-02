@@ -377,11 +377,29 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 consumeAsync.complete();
             });
-        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length()))
+        }).putHeader("Content-length", String.valueOf("".length()))
                 .putHeader("timeout", String.valueOf(1000))
+                .write("")
                 .end();
 
         consumeAsync.await();
+
+        //consumer deletion
+        Async deleteAsync = context.async();
+
+        client.delete(BRIDGE_PORT, BRIDGE_HOST, baseUri, response -> {
+            response.bodyHandler(buffer -> {
+                String consumerInstanceId = buffer.toJsonObject().getString("instance_id");
+                String deletionStatus = buffer.toJsonObject().getString("status");
+
+                context.assertEquals(consumerInstanceId, name);
+                context.assertEquals(deletionStatus, "deleted");
+
+                deleteAsync.complete();
+            });
+        }).putHeader("Content-length",String.valueOf("".length())).write("").end();
+
+        deleteAsync.await();
     }
 
     @Test
@@ -459,11 +477,29 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 consumeAsync.complete();
             });
-        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length()))
+        }).putHeader("Content-length", String.valueOf("".length()))
                 .putHeader("timeout", String.valueOf(1000))
+                .write("")
                 .end();
 
         consumeAsync.await();
+
+        //consumer deletion
+        Async deleteAsync = context.async();
+
+        client.delete(BRIDGE_PORT, BRIDGE_HOST, baseUri, response -> {
+            response.bodyHandler(buffer -> {
+                String consumerInstanceId = buffer.toJsonObject().getString("instance_id");
+                String deletionStatus = buffer.toJsonObject().getString("status");
+
+                context.assertEquals(consumerInstanceId, name);
+                context.assertEquals(deletionStatus, "deleted");
+
+                deleteAsync.complete();
+            });
+        }).putHeader("Content-length",String.valueOf("".length())).write("").end();
+
+        deleteAsync.await();
     }
 
     @Test
@@ -542,9 +578,28 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 consumeAsync.complete();
             });
-        }).putHeader("Content-length", String.valueOf(subJson.toBuffer().length()))
+        }).putHeader("Content-length", String.valueOf("".length()))
                 .putHeader("timeout", String.valueOf(1000))
+                .write("")
                 .end();
+
         consumeAsync.await();
+
+        //consumer deletion
+        Async deleteAsync = context.async();
+
+        client.delete(BRIDGE_PORT, BRIDGE_HOST, baseUri, response -> {
+            response.bodyHandler(buffer -> {
+                String consumerInstanceId = buffer.toJsonObject().getString("instance_id");
+                String deletionStatus = buffer.toJsonObject().getString("status");
+
+                context.assertEquals(consumerInstanceId, name);
+                context.assertEquals(deletionStatus, "deleted");
+
+                deleteAsync.complete();
+            });
+        }).putHeader("Content-length",String.valueOf("".length())).write("").end();
+
+        deleteAsync.await();
     }
 }
