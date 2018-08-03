@@ -103,8 +103,13 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                 }
 
                 this.consume(records -> {
-                    Buffer buffer = (Buffer) messageConverter.toMessages(records);
-                    sendConsumerRecordsResponse(httpServerRequest.response(), buffer);
+                    if (records.succeeded()){
+                        Buffer buffer = (Buffer) messageConverter.toMessages(records.result());
+                        sendConsumerRecordsResponse(httpServerRequest.response(), buffer);
+
+                    } else {
+                        sendConsumerRecordsFailedResponse(httpServerRequest.response());
+                    }
                 });
 
                 break;
@@ -133,7 +138,11 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                     }
 
                     this.commit(offsetData, status -> {
-                        sendConsumerCommitOffsetResponse(httpServerRequest.response(), status.succeeded());
+                        if (status.succeeded()) {
+                            sendConsumerCommitOffsetResponse(httpServerRequest.response(), status.succeeded());
+                        } else {
+                            sendConsumerCommitOffsetResponse(httpServerRequest.response(), status.succeeded());
+                        }
                     });
 
                 });
@@ -211,13 +220,13 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                 .end();
     }
 
-    private void sendConsumerRecordsResponse(HttpServerResponse response, Buffer buffer){
+    private void sendConsumerRecordsResponse(HttpServerResponse response, Buffer buffer) {
         response.putHeader("Content-length", String.valueOf(buffer.length()))
                 .write(buffer)
                 .end();
     }
 
-    private void sendConsumerDeletionResponse(HttpServerResponse response){
+    private void sendConsumerDeletionResponse(HttpServerResponse response) {
         JsonObject jsonResponse = new JsonObject();
         jsonResponse.put("instance_id", this.consumerInstanceId);
         jsonResponse.put("status", "deleted");
@@ -227,12 +236,17 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
                 .end();
     }
 
-    private void sendConsumerCommitOffsetResponse(HttpServerResponse response, boolean result){
+    private void sendConsumerCommitOffsetResponse(HttpServerResponse response, boolean result) {
         if (result){
             response.setStatusCode(200);
         } else {
             response.setStatusCode(500);
         }
+        response.end();
+    }
+
+    private void sendConsumerRecordsFailedResponse(HttpServerResponse response) {
+        response.setStatusCode(500);
         response.end();
     }
 }
