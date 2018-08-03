@@ -197,24 +197,24 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
         jsonResponse.put("instance_id", instanceId);
         jsonResponse.put("base_uri", uri);
 
-        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
-        response.write(jsonResponse.toBuffer());
-        response.end();
+        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()))
+                .write(jsonResponse.toBuffer())
+                .end();
     }
 
     private void sendConsumerSubscriptionResponse(HttpServerResponse response) {
         JsonObject jsonResponse = new JsonObject();
         jsonResponse.put("subscription_status", "subscribed");
 
-        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
-        response.write(jsonResponse.toBuffer());
-        response.end();
+        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()))
+                .write(jsonResponse.toBuffer())
+                .end();
     }
 
     private void sendConsumerRecordsResponse(HttpServerResponse response, Buffer buffer){
-        response.putHeader("Content-length", String.valueOf(buffer.length()));
-        response.write(buffer);
-        response.end();
+        response.putHeader("Content-length", String.valueOf(buffer.length()))
+                .write(buffer)
+                .end();
     }
 
     private void sendConsumerDeletionResponse(HttpServerResponse response){
@@ -222,20 +222,17 @@ public class HttpSinkBridgeEndpoint<V, K> extends SinkBridgeEndpoint<V, K> {
         jsonResponse.put("instance_id", this.consumerInstanceId);
         jsonResponse.put("status", "deleted");
 
-        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()));
-        response.write(jsonResponse.toBuffer());
-        response.end();
+        response.putHeader("Content-length", String.valueOf(jsonResponse.toBuffer().length()))
+                .write(jsonResponse.toBuffer())
+                .end();
     }
 
     private void sendConsumerCommitOffsetResponse(HttpServerResponse response, boolean result){
-        String emptyResponse = "";
         if (result){
             response.setStatusCode(200);
         } else {
             response.setStatusCode(500);
         }
-        response.putHeader("Content-length", String.valueOf(emptyResponse.length()));
-        response.write(emptyResponse);
         response.end();
     }
 }

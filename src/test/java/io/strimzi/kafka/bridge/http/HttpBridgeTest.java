@@ -377,9 +377,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 consumeAsync.complete();
             });
-        }).putHeader("Content-length", String.valueOf("".length()))
-                .putHeader("timeout", String.valueOf(1000))
-                .write("")
+        }).putHeader("timeout", String.valueOf(1000))
                 .end();
 
         consumeAsync.await();
@@ -397,7 +395,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 deleteAsync.complete();
             });
-        }).putHeader("Content-length",String.valueOf("".length())).write("").end();
+        }).end();
 
         deleteAsync.await();
     }
@@ -477,9 +475,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 consumeAsync.complete();
             });
-        }).putHeader("Content-length", String.valueOf("".length()))
-                .putHeader("timeout", String.valueOf(1000))
-                .write("")
+        }).putHeader("timeout", String.valueOf(1000))
                 .end();
 
         consumeAsync.await();
@@ -497,7 +493,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 deleteAsync.complete();
             });
-        }).putHeader("Content-length",String.valueOf("".length())).write("").end();
+        }).putHeader("Content-length",String.valueOf(0)).end();
 
         deleteAsync.await();
     }
@@ -578,9 +574,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 consumeAsync.complete();
             });
-        }).putHeader("Content-length", String.valueOf("".length()))
-                .putHeader("timeout", String.valueOf(1000))
-                .write("")
+        }).putHeader("timeout", String.valueOf(1000))
                 .end();
 
         consumeAsync.await();
@@ -598,7 +592,7 @@ public class HttpBridgeTest extends KafkaClusterTestBase {
 
                 deleteAsync.complete();
             });
-        }).putHeader("Content-length",String.valueOf("".length())).write("").end();
+        }).end();
 
         deleteAsync.await();
     }

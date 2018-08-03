@@ -193,8 +193,6 @@ public class HttpBridge extends AbstractVerticle {
                 } else {
                     httpServerRequest.response()
                             .setStatusCode(404)
-                            .putHeader("Content-length", String.valueOf("".length()))
-                            .write("")
                             .end();
                 }
                 break;
